@@ -1,3 +1,7 @@
 spring:
   application:
     name: resource-allocator
+  datasource:
+    url: jdbc:postgresql://localhost:5432/resource_allocator_db
+    username: resource_allocator
+    password: dev_password
