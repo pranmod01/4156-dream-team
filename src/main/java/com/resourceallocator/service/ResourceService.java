@@ -1,0 +1,86 @@
+package com.resourceallocator.service;
+
+import com.resourceallocator.dto.AddResourceRequest;
+import com.resourceallocator.dto.ResourceResponse;
+import com.resourceallocator.dto.UpdateResourceRequest;
+import com.resourceallocator.exception.InvalidRequestException;
+import com.resourceallocator.model.Organization;
+import com.resourceallocator.model.Resource;
+import com.resourceallocator.model.ResourceType;
+import com.resourceallocator.repository.ResourceRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Registers resources and changes their online state.
+ */
+@Service
+public class ResourceService {
+
+    /** Persists resources. */
+    private final ResourceRepository resourceRepository;
+
+    /**
+     * Creates the service.
+     *
+     * @param resourceRepository repository used to persist resources
+     */
+    public ResourceService(final ResourceRepository resourceRepository) {
+        this.resourceRepository = resourceRepository;
+    }
+
+    /**
+     * Registers a new resource owned by the given organization.
+     *
+     * @param organization the authenticated organization
+     * @param request the resource to create
+     * @return the created resource, including its new identifier
+     * @throws InvalidRequestException if a CPU has no core count or a GPU
+     *         has one
+     */
+    @Transactional
+    public ResourceResponse addResource(final Organization organization,
+            final AddResourceRequest request) {
+        validateCores(request.resourceType(), request.cores());
+        Resource resource = new Resource(
+                organization.getId(),
+                request.resourceType(),
+                request.memoryGb(),
+                request.cores(),
+                request.online());
+        return ResourceResponse.from(resourceRepository.save(resource));
+    }
+
+    /**
+     * Takes one of the organization's resources online or offline.
+     *
+     * @param organization the authenticated organization
+     * @param resourceId identifier of the resource to update
+     * @param request the new online state
+     * @return the updated resource
+     * @throws InvalidRequestException if the organization has no resource
+     *         with that identifier
+     */
+    @Transactional
+    public ResourceResponse updateResource(final Organization organization,
+            final Long resourceId, final UpdateResourceRequest request) {
+        Resource resource = resourceRepository
+                .findByIdAndOrganizationId(resourceId, organization.getId())
+                .orElseThrow(() -> new InvalidRequestException(
+                        "Resource " + resourceId + " was not found."));
+        resource.setOnline(request.online());
+        return ResourceResponse.from(resource);
+    }
+
+    private static void validateCores(final ResourceType type,
+            final Integer cores) {
+        if (type == ResourceType.CPU && cores == null) {
+            throw new InvalidRequestException(
+                    "cores is required for CPU resources.");
+        }
+        if (type == ResourceType.GPU && cores != null) {
+            throw new InvalidRequestException(
+                    "cores must not be set for GPU resources.");
+        }
+    }
+}
