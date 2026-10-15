@@ -88,7 +88,9 @@
         <module name="SimplifyBooleanReturn"/>
 
         <!-- Design -->
-        <module name="DesignForExtension"/>
+        <!-- DesignForExtension removed: it pushes methods to be final, and
+             Spring's proxies (@Transactional, @Service) silently skip
+             final methods. (AI-edited, Claude Code, Claude Opus 5.5) -->
         <module name="FinalClass"/>
         <module name="HideUtilityClassConstructor"/>
         <module name="InterfaceIsType"/>

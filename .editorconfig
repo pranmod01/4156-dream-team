@@ -1,0 +1,26 @@
+# AI-generated (Claude Code, Claude Opus 5.5)
+# Matches checkstyle.xml: spaces only, 80-column Java lines.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.java]
+max_line_length = 80
+
+[*.{yaml,yml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cmd]
+end_of_line = crlf
+
+[pom.xml]
+indent_style = tab

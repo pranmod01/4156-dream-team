@@ -104,13 +104,14 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<!-- BEGIN AI-generated (Claude Code, Claude Opus 5.5) -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.14</version>
+				<version>0.8.15</version>
 				<configuration>
 					<excludes>
-						<exclude>**/GcsStorageService.class</exclude>
+						<exclude>**/ResourceAllocatorApplication.class</exclude>
 					</excludes>
 				</configuration>
 				<executions>
@@ -131,18 +132,65 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
-				<version>3.3.1</version>
+				<version>3.6.0</version>
+				<dependencies>
+					<!-- 12.x is the newest Checkstyle that runs on Java 17 -->
+					<dependency>
+						<groupId>com.puppycrawl.tools</groupId>
+						<artifactId>checkstyle</artifactId>
+						<version>12.3.1</version>
+					</dependency>
+				</dependencies>
 				<configuration>
 					<configLocation>checkstyle.xml</configLocation>
 					<consoleOutput>true</consoleOutput>
 					<failsOnError>true</failsOnError>
+					<violationSeverity>warning</violationSeverity>
 				</configuration>
+				<executions>
+					<execution>
+						<id>checkstyle</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-pmd-plugin</artifactId>
 				<version>3.28.0</version>
+				<dependencies>
+					<!-- Newer PMD than the plugin's default (7.17), which
+					     can't read class files from very new JDKs -->
+					<dependency>
+						<groupId>net.sourceforge.pmd</groupId>
+						<artifactId>pmd-java</artifactId>
+						<version>7.28.0</version>
+					</dependency>
+					<dependency>
+						<groupId>net.sourceforge.pmd</groupId>
+						<artifactId>pmd-core</artifactId>
+						<version>7.28.0</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<targetJdk>${java.version}</targetJdk>
+					<printFailingErrors>true</printFailingErrors>
+				</configuration>
+				<executions>
+					<execution>
+						<id>pmd</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
+			<!-- END AI-generated -->
+
 		</plugins>
 	</build>
 
