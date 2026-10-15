@@ -17,4 +17,14 @@ public interface OrganizationRepository
      * @return the owning organization, if any
      */
     Optional<Organization> findByApiKeyHash(String apiKeyHash);
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Checks whether an organization with the given name already exists.
+     *
+     * @param orgName the organization name
+     * @return {@code true} if the name is taken
+     */
+    boolean existsByOrgName(String orgName);
+    // END AI-generated
 }

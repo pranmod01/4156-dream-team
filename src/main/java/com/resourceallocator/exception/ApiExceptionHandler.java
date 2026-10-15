@@ -39,6 +39,20 @@ public class ApiExceptionHandler {
                 HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Maps a request that clashes with existing data to 409 Conflict.
+     *
+     * @param ex the exception
+     * @return the problem detail
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ProblemDetail handleConflict(final ConflictException ex) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, ex.getMessage());
+    }
+    // END AI-generated
+
     /**
      * Maps a request body that fails bean validation to 400 Bad Request,
      * listing each invalid field.

@@ -8,7 +8,9 @@ import com.resourceallocator.model.Organization;
 import com.resourceallocator.service.ResourceService;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
- * Endpoints for registering resources and changing their online state.
+ * Endpoints for registering, listing, and changing the online state of
+ * resources.
  * Every request needs an {@code X-API-Key} header.
  */
 @RestController
@@ -76,4 +79,19 @@ public class ResourceController {
         return resourceService.updateResource(
                 organization, resourceId, request);
     }
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Lists all of the caller's resources and whether each is online.
+     *
+     * @param organization the organization identified by the API key
+     * @return 200 OK with the resources, ordered by identifier
+     */
+    @GetMapping
+    public List<ResourceResponse> listResources(
+            @RequestAttribute(ApiKeyAuthInterceptor.ORGANIZATION_ATTRIBUTE)
+            final Organization organization) {
+        return resourceService.listResources(organization);
+    }
+    // END AI-generated
 }
