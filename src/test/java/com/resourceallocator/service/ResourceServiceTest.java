@@ -15,6 +15,7 @@ import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
 import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.repository.ResourceRepository;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -125,6 +126,25 @@ class ResourceServiceTest {
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("99");
     }
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    @Test
+    void listResourcesReturnsAllOfTheOrganizationsResources() {
+        when(resourceRepository.findByOrganizationIdOrderByIdAsc(ORG_ID))
+                .thenReturn(List.of(
+                        withId(new Resource(ORG_ID, ResourceType.CPU, 32, 8,
+                                true), 1L),
+                        withId(new Resource(ORG_ID, ResourceType.GPU, 80,
+                                null, false), 2L)));
+
+        List<ResourceResponse> responses =
+                resourceService.listResources(organization);
+
+        assertThat(responses).containsExactly(
+                new ResourceResponse(1L, ResourceType.CPU, 32, 8, true),
+                new ResourceResponse(2L, ResourceType.GPU, 80, null, false));
+    }
+    // END AI-generated
 
     private static Resource withId(final Resource resource, final long id) {
         ReflectionTestUtils.setField(resource, "id", id);

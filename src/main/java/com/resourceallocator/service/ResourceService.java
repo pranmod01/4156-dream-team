@@ -8,11 +8,12 @@ import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
 import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.repository.ResourceRepository;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Registers resources and changes their online state.
+ * Registers and lists resources and changes their online state.
  */
 @Service
 public class ResourceService {
@@ -71,6 +72,24 @@ public class ResourceService {
         resource.setOnline(request.online());
         return ResourceResponse.from(resource);
     }
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Lists every resource owned by the organization, online or offline.
+     *
+     * @param organization the authenticated organization
+     * @return the organization's resources, ordered by identifier
+     */
+    @Transactional(readOnly = true)
+    public List<ResourceResponse> listResources(
+            final Organization organization) {
+        return resourceRepository
+                .findByOrganizationIdOrderByIdAsc(organization.getId())
+                .stream()
+                .map(ResourceResponse::from)
+                .toList();
+    }
+    // END AI-generated
 
     private static void validateCores(final ResourceType type,
             final Integer cores) {

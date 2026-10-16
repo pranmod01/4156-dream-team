@@ -27,4 +27,14 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
      * @return the organization's online resources
      */
     List<Resource> findByOrganizationIdAndOnlineTrue(Long organizationId);
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Lists all resources belonging to an organization, online or offline.
+     *
+     * @param organizationId the owning organization's identifier
+     * @return the organization's resources, ordered by identifier
+     */
+    List<Resource> findByOrganizationIdOrderByIdAsc(Long organizationId);
+    // END AI-generated
 }
