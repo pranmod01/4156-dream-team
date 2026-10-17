@@ -131,6 +131,53 @@ class JobQueueServiceTest {
                 .isEqualTo(BlockedReason.EXCEEDS_USAGE_LIMIT);
     }
 
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    @Test
+    void flagsJobWhenMatchingResourcesAreHeldByRunningJobs() {
+        Job runningJob = running(1L, gpuJob(1), 0, 10);
+        Job waiting = queued(2L, gpuJob(1), 1);
+        givenJobs(runningJob, waiting);
+        givenOnlineResources(withId(gpu(80), 10L));
+        givenBusyResources(10L);
+
+        JobQueueEntry entry = service.getJobQueue(organization, NO_FILTER)
+                .jobs().get(1);
+
+        assertThat(entry.blocked()).isTrue();
+        assertThat(entry.blockedReason())
+                .isEqualTo(BlockedReason.RESOURCES_IN_USE);
+    }
+
+    @Test
+    void freeMatchingResourceLetsJobRunDespiteBusyOnes() {
+        Job runningJob = running(1L, gpuJob(1), 0, 10);
+        Job waiting = queued(2L, gpuJob(1), 1);
+        givenJobs(runningJob, waiting);
+        givenOnlineResources(withId(gpu(80), 10L), withId(gpu(80), 11L));
+        givenBusyResources(10L);
+
+        JobQueueEntry entry = service.getJobQueue(organization, NO_FILTER)
+                .jobs().get(1);
+
+        assertThat(entry.blocked()).isFalse();
+    }
+
+    @Test
+    void usageLimitIsReportedBeforeBusyResources() {
+        Job runningJob = running(1L, gpuJob(2), 0, 10);
+        Job waiting = queued(2L, gpuJob(1), 1);
+        givenJobs(runningJob, waiting);
+        givenOnlineResources(withId(gpu(80), 10L), withId(gpu(80), 11L));
+        givenBusyResources(10L, 11L);
+
+        JobQueueEntry entry = service.getJobQueue(organization, NO_FILTER)
+                .jobs().get(1);
+
+        assertThat(entry.blockedReason())
+                .isEqualTo(BlockedReason.EXCEEDS_USAGE_LIMIT);
+    }
+    // END AI-generated
+
     @Test
     void schedulableJobIsNotBlocked() {
         Job job = queued(1L, cpuJob(2, 4), 1);
@@ -214,6 +261,18 @@ class JobQueueServiceTest {
     private void givenOnlineResources(final Resource... resources) {
         when(resourceRepository.findByOrganizationIdAndOnlineTrue(ORG_ID))
                 .thenReturn(List.of(resources));
+    }
+
+    // AI-generated (Claude Code, Claude Opus 5.5)
+    private void givenBusyResources(final Long... resourceIds) {
+        when(resourceRepository.findResourceIdsHeldByRunningJobs(ORG_ID))
+                .thenReturn(List.of(resourceIds));
+    }
+
+    // AI-generated (Claude Code, Claude Opus 5.5)
+    private static Resource withId(final Resource resource, final long id) {
+        ReflectionTestUtils.setField(resource, "id", id);
+        return resource;
     }
 
     private static Job gpuJob(final int units) {

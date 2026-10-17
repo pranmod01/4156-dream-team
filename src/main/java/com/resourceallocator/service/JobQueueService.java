@@ -17,9 +17,11 @@ import com.resourceallocator.repository.ResourceRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,7 +56,8 @@ public class JobQueueService {
      * <p>Queue positions are computed across all of the organization's
      * queued jobs before filtering, so a job keeps the same position
      * whichever filters are applied. Each queued job is checked for a
-     * {@link BlockedReason}. The time window applies only to running and
+     * {@link BlockedReason}; resources assigned to running jobs count as
+     * matching but not free. The time window applies only to running and
      * done jobs; queued jobs have not run, so the window never excludes
      * them. The summary always counts every job of the organization.
      *
@@ -73,6 +76,9 @@ public class JobQueueService {
                         organization.getId());
         List<Resource> onlineResources = resourceRepository
                 .findByOrganizationIdAndOnlineTrue(organization.getId());
+        // AI-generated (Claude Code, Claude Opus 5.5)
+        Set<Long> busyResourceIds = new HashSet<>(resourceRepository
+                .findResourceIdsHeldByRunningJobs(organization.getId()));
         Map<ResourceType, Integer> unitsInUse = unitsInUse(jobs);
         int maxResults = filter.limit() == null
                 ? Integer.MAX_VALUE : filter.limit();
@@ -89,7 +95,8 @@ public class JobQueueService {
                 queuePosition++;
                 position = queuePosition;
                 blockedReason = findBlockedReason(job, organization,
-                        onlineResources, unitsInUse).orElse(null);
+                        onlineResources, busyResourceIds, unitsInUse)
+                        .orElse(null);
             }
             if (matches(job, filter)) {
                 entries.add(toEntry(job, position, blockedReason));
@@ -122,14 +129,19 @@ public class JobQueueService {
         return inUse;
     }
 
+    // BEGIN AI-edited (Claude Code, Claude Opus 5.5): busy-resource check
+    // Checks run from most to least lasting: no fitting hardware at all,
+    // then the organization's policy limit, then resources that will free
+    // up when running jobs finish.
     private static Optional<BlockedReason> findBlockedReason(final Job job,
             final Organization organization,
             final List<Resource> onlineResources,
+            final Set<Long> busyResourceIds,
             final Map<ResourceType, Integer> unitsInUse) {
-        long matchingResources = onlineResources.stream()
+        List<Resource> matching = onlineResources.stream()
                 .filter(resource -> satisfies(resource, job))
-                .count();
-        if (matchingResources < job.getUnitsRequested()) {
+                .toList();
+        if (matching.size() < job.getUnitsRequested()) {
             return Optional.of(BlockedReason.NO_MATCHING_RESOURCE);
         }
         int used = unitsInUse.getOrDefault(job.getResourceType(), 0);
@@ -137,8 +149,15 @@ public class JobQueueService {
         if (used + job.getUnitsRequested() > limit) {
             return Optional.of(BlockedReason.EXCEEDS_USAGE_LIMIT);
         }
+        long freeMatching = matching.stream()
+                .filter(resource -> !busyResourceIds.contains(resource.getId()))
+                .count();
+        if (freeMatching < job.getUnitsRequested()) {
+            return Optional.of(BlockedReason.RESOURCES_IN_USE);
+        }
         return Optional.empty();
     }
+    // END AI-edited
 
     // Whether a resource meets a job's type, memory and core requirements.
     private static boolean satisfies(final Resource resource, final Job job) {
