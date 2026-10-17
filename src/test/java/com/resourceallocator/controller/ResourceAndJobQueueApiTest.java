@@ -12,12 +12,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.resourceallocator.auth.ApiKeyAuthInterceptor;
 import com.resourceallocator.auth.ApiKeyHasher;
 import com.resourceallocator.model.Job;
+import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
 import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.repository.JobRepository;
 import com.resourceallocator.repository.OrganizationRepository;
 import com.resourceallocator.repository.ResourceRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +56,10 @@ class ResourceAndJobQueueApiTest {
 
     @Autowired
     private JobRepository jobRepository;
+
+    // AI-generated (Claude Code, Claude Opus 5.5)
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private MockMvc mockMvc;
 
@@ -241,6 +249,37 @@ class ResourceAndJobQueueApiTest {
                 .andExpect(jsonPath("$.jobs[0].requiredResources.resourceType")
                         .value("GPU"));
     }
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    @Test
+    void jobQueueFlagsJobWhoseOnlyResourceIsHeldByRunningJob()
+            throws Exception {
+        Resource gpu = resourceRepository.saveAndFlush(new Resource(
+                organization.getId(), ResourceType.GPU, 80, null, true));
+        Job runningJob = new Job(
+                organization.getId(), ResourceType.GPU, 1, 40, null, 2);
+        runningJob.setStatus(JobStatus.RUNNING);
+        runningJob.setStartedAt(Instant.now());
+        jobRepository.saveAndFlush(runningJob);
+        entityManager.createNativeQuery(
+                "INSERT INTO job_resource (job_id, resource_id) VALUES (?, ?)")
+                .setParameter(1, runningJob.getId())
+                .setParameter(2, gpu.getId())
+                .executeUpdate();
+        Job waiting = jobRepository.saveAndFlush(new Job(
+                organization.getId(), ResourceType.GPU, 1, 40, null, 2));
+
+        mockMvc.perform(get("/jobs/queue")
+                        .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY)
+                        .param("status", "queued"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobs", hasSize(1)))
+                .andExpect(jsonPath("$.jobs[0].jobId").value(waiting.getId()))
+                .andExpect(jsonPath("$.jobs[0].blocked").value(true))
+                .andExpect(jsonPath("$.jobs[0].blockedReason")
+                        .value("RESOURCES_IN_USE"));
+    }
+    // END AI-generated
 
     @Test
     void jobQueueRejectsUnknownStatus() throws Exception {
