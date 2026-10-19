@@ -101,6 +101,9 @@ public class JobService {
      * Permanently deletes one of the organization's jobs that is not
      * running. Any resource assignments of the job are deleted with it.
      *
+     * <p>The dispatcher runs first, so a job that was queued can start
+     * during this call; it is then running and the delete is refused.
+     *
      * @param organization the authenticated organization
      * @param jobId identifier of the job
      * @return confirmation naming the deleted job
