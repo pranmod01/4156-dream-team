@@ -4,11 +4,14 @@ package com.resourceallocator;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Entry point for the resource allocator service.
  */
 @SpringBootApplication
+// AI-generated (Claude Code, Claude Opus 5.5): runs JobDispatchScheduler
+@EnableScheduling
 public class ResourceAllocatorApplication {
 
     /**
