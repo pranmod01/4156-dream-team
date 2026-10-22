@@ -1,6 +1,8 @@
 package com.resourceallocator.service;
 // AI-generated (Claude Code, Claude Opus 5.5)
 
+import com.resourceallocator.auth.ApiKeyAuthConfig;
+import com.resourceallocator.exception.ApiExceptionHandler;
 import com.resourceallocator.model.Job;
 import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
@@ -36,6 +38,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class JobDispatcher {
 
+    private final ApiKeyAuthConfig apiKeyAuthConfig;
+
+    private final ApiExceptionHandler apiExceptionHandler;
+
     /** Reads and updates jobs and their resource assignments. */
     private final JobRepository jobRepository;
 
@@ -54,10 +60,12 @@ public class JobDispatcher {
      */
     public JobDispatcher(final JobRepository jobRepository,
             final ResourceRepository resourceRepository,
-            final OrganizationRepository organizationRepository) {
+            final OrganizationRepository organizationRepository, ApiExceptionHandler apiExceptionHandler, ApiKeyAuthConfig apiKeyAuthConfig) {
         this.jobRepository = jobRepository;
         this.resourceRepository = resourceRepository;
         this.organizationRepository = organizationRepository;
+        this.apiExceptionHandler = apiExceptionHandler;
+        this.apiKeyAuthConfig = apiKeyAuthConfig;
     }
 
     /**
@@ -81,11 +89,15 @@ public class JobDispatcher {
      */
     @Transactional
     public void dispatch(final Long organizationId, final Instant now) {
+        // Serializes dispatches per organization. findByIdForUpdate acquires a 
+        // a pessimistic lock, preventing concurrent dispatches on the same 
+        // resources, before the transaction commits
         Optional<Organization> organization =
                 organizationRepository.findByIdForUpdate(organizationId);
         if (organization.isEmpty()) {
             return;
         }
+        // Release any jobs that are currently done to update available resources
         Map<ResourceType, Integer> unitsInUse =
                 finishExpiredLeases(organizationId, now);
         Set<Long> busyResourceIds = new HashSet<>(jobRepository
@@ -97,11 +109,13 @@ public class JobDispatcher {
         for (Job job : jobRepository
                 .findByOrganizationIdAndStatusOrderBySubmittedAtAscIdAsc(
                         organizationId, JobStatus.QUEUED)) {
+            // Skip jobs that would exceed usage limit
             int used = unitsInUse.getOrDefault(job.getResourceType(), 0);
             if (used + job.getUnitsRequested()
                     > usageLimit(organization.get(), job.getResourceType())) {
                 continue;
             }
+            // Get list of suitable units for this job, try to assign them
             List<Resource> assigned = onlineResources.stream()
                     .filter(resource -> !busyResourceIds.contains(
                             resource.getId()))
@@ -112,13 +126,20 @@ public class JobDispatcher {
                 continue;
             }
             for (Resource resource : assigned) {
+                // Assignment is only committed after the transaction is completed.
+                // Reads can be stale, but safe. No other function will write concurrently.
                 jobRepository.assignResource(job.getId(), resource.getId());
                 busyResourceIds.add(resource.getId());
             }
+            // Updates job status. Doesn't flush until after transaction is committed
+            // TODO: check delete job endpoint, if not committed currently, could delete a running job
+            // TODO: Add locking
             job.setStatus(JobStatus.RUNNING);
             job.setStartedAt(now);
             job.setLeaseEnd(now.plus(
                     Duration.ofHours(job.getMaxDurationHours())));
+            // TODO: Check delete resource logic. If this transaction is not yet committed
+            // delete will not see that this resource is in use.
             unitsInUse.merge(job.getResourceType(), job.getUnitsRequested(),
                     Integer::sum);
         }
