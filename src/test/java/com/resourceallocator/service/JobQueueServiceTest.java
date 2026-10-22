@@ -2,6 +2,8 @@ package com.resourceallocator.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.resourceallocator.dto.BlockedReason;
@@ -23,6 +25,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -43,13 +46,17 @@ class JobQueueServiceTest {
     @Mock
     private ResourceRepository resourceRepository;
 
+    @Mock
+    private JobDispatcher jobDispatcher;
+
     private JobQueueService service;
 
     private Organization organization;
 
     @BeforeEach
     void setUp() {
-        service = new JobQueueService(jobRepository, resourceRepository);
+        service = new JobQueueService(jobRepository, resourceRepository,
+                jobDispatcher);
         organization = new Organization("acme", "hash", 4, 2);
         ReflectionTestUtils.setField(organization, "id", ORG_ID);
     }
@@ -253,6 +260,30 @@ class JobQueueServiceTest {
                 .hasMessageContaining("limit");
     }
 
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    @Test
+    void runsDispatcherBeforeReadingJobs() {
+        givenJobs();
+        givenOnlineResources();
+
+        service.getJobQueue(organization, NO_FILTER);
+
+        InOrder order = inOrder(jobDispatcher, jobRepository);
+        order.verify(jobDispatcher).dispatch(ORG_ID);
+        order.verify(jobRepository)
+                .findByOrganizationIdOrderBySubmittedAtAscIdAsc(ORG_ID);
+    }
+
+    @Test
+    void invalidFilterDoesNotRunDispatcher() {
+        JobQueueFilter filter = new JobQueueFilter(null, null, null, null, 0);
+
+        assertThatThrownBy(() -> service.getJobQueue(organization, filter))
+                .isInstanceOf(InvalidRequestException.class);
+        verifyNoInteractions(jobDispatcher);
+    }
+    // END AI-generated
+
     private void givenJobs(final Job... jobs) {
         when(jobRepository.findByOrganizationIdOrderBySubmittedAtAscIdAsc(
                 ORG_ID)).thenReturn(List.of(jobs));
@@ -265,7 +296,7 @@ class JobQueueServiceTest {
 
     // AI-generated (Claude Code, Claude Opus 5.5)
     private void givenBusyResources(final Long... resourceIds) {
-        when(resourceRepository.findResourceIdsHeldByRunningJobs(ORG_ID))
+        when(jobRepository.findResourceIdsHeldByRunningJobs(ORG_ID))
                 .thenReturn(List.of(resourceIds));
     }
 

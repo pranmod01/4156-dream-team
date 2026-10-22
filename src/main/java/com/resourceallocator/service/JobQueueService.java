@@ -37,16 +37,22 @@ public class JobQueueService {
     /** Reads the organization's resources. */
     private final ResourceRepository resourceRepository;
 
+    /** Brings job states up to date before the queue is read. */
+    private final JobDispatcher jobDispatcher;
+
     /**
      * Creates the service.
      *
      * @param jobRepository repository used to read jobs
      * @param resourceRepository repository used to read resources
+     * @param jobDispatcher dispatcher that updates job states
      */
     public JobQueueService(final JobRepository jobRepository,
-            final ResourceRepository resourceRepository) {
+            final ResourceRepository resourceRepository,
+            final JobDispatcher jobDispatcher) {
         this.jobRepository = jobRepository;
         this.resourceRepository = resourceRepository;
+        this.jobDispatcher = jobDispatcher;
     }
 
     /**
@@ -61,23 +67,30 @@ public class JobQueueService {
      * done jobs; queued jobs have not run, so the window never excludes
      * them. The summary always counts every job of the organization.
      *
+     * <p>The dispatcher runs first, as it does for the job endpoints, so
+     * the queue never shows a job as queued that would already be running
+     * or a running job whose lease has ended. The transaction is not
+     * read-only because the dispatcher locks the organization's row and
+     * updates jobs.
+     *
      * @param organization the authenticated organization
      * @param filter the optional filters to apply
      * @return the matching jobs and the organization's status counts
      * @throws InvalidRequestException if {@code end} is before
      *         {@code start} or {@code limit} is not positive
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public JobQueueResponse getJobQueue(final Organization organization,
             final JobQueueFilter filter) {
         validate(filter);
+        jobDispatcher.dispatch(organization.getId());
         List<Job> jobs = jobRepository
                 .findByOrganizationIdOrderBySubmittedAtAscIdAsc(
                         organization.getId());
         List<Resource> onlineResources = resourceRepository
                 .findByOrganizationIdAndOnlineTrue(organization.getId());
         // AI-generated (Claude Code, Claude Opus 5.5)
-        Set<Long> busyResourceIds = new HashSet<>(resourceRepository
+        Set<Long> busyResourceIds = new HashSet<>(jobRepository
                 .findResourceIdsHeldByRunningJobs(organization.getId()));
         Map<ResourceType, Integer> unitsInUse = unitsInUse(jobs);
         int maxResults = filter.limit() == null

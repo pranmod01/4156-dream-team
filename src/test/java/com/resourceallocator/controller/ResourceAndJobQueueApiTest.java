@@ -194,10 +194,11 @@ class ResourceAndJobQueueApiTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    // BEGIN AI-edited (Claude Code, Claude Opus 5.5): the queue now runs
+    // the dispatcher first, so a job with a free matching resource is
+    // listed as running rather than queued.
     @Test
     void jobQueueListsOnlyCallersJobs() throws Exception {
-        resourceRepository.save(new Resource(
-                organization.getId(), ResourceType.GPU, 80, null, true));
         Job job = jobRepository.save(new Job(
                 organization.getId(), ResourceType.GPU, 1, 40, null, 2));
         jobRepository.save(new Job(
@@ -208,15 +209,30 @@ class ResourceAndJobQueueApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jobs", hasSize(1)))
                 .andExpect(jsonPath("$.jobs[0].jobId").value(job.getId()))
-                .andExpect(jsonPath("$.jobs[0].status").value("QUEUED"))
-                .andExpect(jsonPath("$.jobs[0].queuePosition").value(1))
-                .andExpect(jsonPath("$.jobs[0].blocked").value(false))
                 .andExpect(jsonPath("$.jobs[0].requiredResources.resourceType")
                         .value("GPU"))
                 .andExpect(jsonPath("$.summary.queued").value(1))
                 .andExpect(jsonPath("$.summary.running").value(0))
                 .andExpect(jsonPath("$.summary.done").value(0));
     }
+
+    @Test
+    void jobQueueStartsJobThatCanRunBeforeListingIt() throws Exception {
+        resourceRepository.save(new Resource(
+                organization.getId(), ResourceType.GPU, 80, null, true));
+        Job job = jobRepository.save(new Job(
+                organization.getId(), ResourceType.GPU, 1, 40, null, 2));
+
+        mockMvc.perform(get("/jobs/queue")
+                        .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobs", hasSize(1)))
+                .andExpect(jsonPath("$.jobs[0].jobId").value(job.getId()))
+                .andExpect(jsonPath("$.jobs[0].status").value("RUNNING"))
+                .andExpect(jsonPath("$.summary.queued").value(0))
+                .andExpect(jsonPath("$.summary.running").value(1));
+    }
+    // END AI-edited
 
     @Test
     void jobQueueWithoutApiKeyIsUnauthorized() throws Exception {
@@ -260,6 +276,8 @@ class ResourceAndJobQueueApiTest {
                 organization.getId(), ResourceType.GPU, 1, 40, null, 2);
         runningJob.setStatus(JobStatus.RUNNING);
         runningJob.setStartedAt(Instant.now());
+        // AI-generated (Claude Code, Claude Opus 5.5)
+        runningJob.setLeaseEnd(Instant.now().plusSeconds(3600));
         jobRepository.saveAndFlush(runningJob);
         entityManager.createNativeQuery(
                 "INSERT INTO job_resource (job_id, resource_id) VALUES (?, ?)")
