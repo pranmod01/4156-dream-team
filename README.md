@@ -105,3 +105,176 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
             "resourceIds": []
         }
         ```
+    - `400 Bad Request` -- Also returned if `minCores` is missing for a CPU job or set for a GPU job. This is also returned if `unitsRequested` exceeds the organization's usage limit for that resource type.
+
+
+### GET /jobs/{jobId}
+- Returns a job's current status, including when it started, when its lease ends, and which resources it has been assigned.
+- Before responding, the server dispatches any queued jobs that can now run, so the returned status is up to date.
+- Authentication: required
+- Path Parameters:
+    - jobId (integer, required): The ID of the job, as returned when the job was created.
+
+- Responses:
+    - `200 OK` -- Returns the job's information.
+        ```
+        {
+            "jobId": 1,
+            "status": "RUNNING",
+            "resourceType": "CPU",
+            "unitsRequested": 1,
+            "submittedAt": "2026-10-22T01:19:54.460571Z",
+            "startedAt": "2026-10-22T01:19:54.512034Z",
+            "leaseEnd": "2026-10-22T04:19:54.512034Z",
+            "resourceIds": [3]
+        }
+        ```
+    - `400 Bad Request` -- Also returned if the organization has no job with the given ID.
+
+
+### DELETE /jobs/{jobId}
+- Permanently deletes a job that is not currently running (i.e., `QUEUED` or `DONE`), along with any of its resource assignments.
+- Running jobs cannot be deleted.
+- Authentication: required
+- Path Parameters:
+    - jobId (integer, required): The ID of the job to delete.
+
+- Responses:
+    - `200 OK` -- Job deleted successfully. Returns the ID of the deleted job.
+        ```
+        {
+            "deletedJobId": 1
+        }
+        ```
+    - `404 Not Found` -- The organization has no job with the given ID.
+    - `409 Conflict` -- The job is currently running and cannot be deleted.
+
+
+### GET /jobs/queue
+- Lists the organization's jobs in queue order (oldest submission first), with optional filters.
+- Queued jobs include their position in the queue and, if they cannot run yet, why they are blocked. Also returns a count of jobs in each status.
+- Authentication: required
+- Query Parameters (all optional; values are case-insensitive):
+    - status (string): Only return jobs in this state. One of `QUEUED`, `RUNNING`, `DONE`.
+    - resourceType (string): Only return jobs requesting this resource type. One of `CPU`, `GPU`.
+    - start (ISO-8601 timestamp): Only return running or done jobs whose run overlaps a window starting at this time. Queued jobs are always included.
+    - end (ISO-8601 timestamp): Only return running or done jobs whose run overlaps a window ending at this time. Must not be before `start`.
+    - limit (integer): Maximum number of jobs to return. Must be positive.
+- Example Request: `GET /jobs/queue?status=queued&resourceType=CPU&limit=10`
+
+- Responses:
+    - `200 OK` -- Returns the matching jobs and a summary of job counts by status. `queuePosition` is null for jobs that are not queued, and `blockedReason` is one of `NO_MATCHING_RESOURCE` or `EXCEEDS_USAGE_LIMIT` when `blocked` is true.
+        ```
+        {
+            "jobs": [
+                {
+                    "jobId": 2,
+                    "status": "QUEUED",
+                    "requiredResources": {
+                        "resourceType": "CPU",
+                        "unitsRequested": 1,
+                        "minMemoryGb": 64,
+                        "minCores": 4,
+                        "maxDurationHours": 3
+                    },
+                    "submittedAt": "2026-10-22T01:19:54.460571Z",
+                    "startedAt": null,
+                    "leaseEnd": null,
+                    "queuePosition": 1,
+                    "blocked": true,
+                    "blockedReason": "NO_MATCHING_RESOURCE"
+                }
+            ],
+            "summary": {
+                "queued": 1,
+                "running": 0,
+                "done": 0
+            }
+        }
+        ```
+    - `400 Bad Request` -- Also returned if `status` or `resourceType` is not a recognized value, a timestamp is malformed, `end` is before `start`, or `limit` is not positive.
+
+
+### POST /resources
+- Registers a new CPU or GPU resource for the organization. If registering a CPU, `cores` is required. Otherwise, `cores` must be null.
+- Resources that are online can be assigned to queued jobs.
+- Authentication: required
+- Request Body:
+    ```
+    {
+        "resourceType": "CPU",
+        "memoryGb": 64,
+        "cores": 8,
+        "online": true
+    }
+    ```
+    - resourceType (string, required): Type of resource. One of `CPU`, `GPU`.
+    - memoryGb (integer, required): Amount of memory on the resource. Must be positive.
+    - cores (integer): Number of cores on a CPU resource. Must be positive. Must be null for a GPU.
+    - online (boolean, required): Whether the resource is available to run jobs.
+
+- Responses:
+    - `201 Created` -- Resource created successfully. Returns the resource's information.
+        ```
+        {
+            "id": 1,
+            "resourceType": "CPU",
+            "memoryGb": 64,
+            "cores": 8,
+            "online": true
+        }
+        ```
+    - `400 Bad Request` -- Also returned if `cores` is missing for a CPU resource or set for a GPU resource.
+
+
+### GET /resources
+- Lists all of the organization's resources, ordered by ID, along with whether each is online.
+- Authentication: required
+
+- Responses:
+    - `200 OK` -- Returns a list of the organization's resources.
+        ```
+        [
+            {
+                "id": 1,
+                "resourceType": "CPU",
+                "memoryGb": 64,
+                "cores": 8,
+                "online": true
+            },
+            {
+                "id": 2,
+                "resourceType": "GPU",
+                "memoryGb": 80,
+                "cores": null,
+                "online": false
+            }
+        ]
+        ```
+
+
+### PATCH /resources/{resourceId}
+- Takes one of the organization's resources online or offline.
+- Authentication: required
+- Path Parameters:
+    - resourceId (integer, required): The ID of the resource to update.
+- Request Body:
+    ```
+    {
+        "online": false
+    }
+    ```
+    - online (boolean, required): The new online state of the resource.
+
+- Responses:
+    - `200 OK` -- Resource updated successfully. Returns the updated resource's information.
+        ```
+        {
+            "id": 1,
+            "resourceType": "CPU",
+            "memoryGb": 64,
+            "cores": 8,
+            "online": false
+        }
+        ```
+    - `400 Bad Request` -- Also returned if the organization has no resource with the given ID.
