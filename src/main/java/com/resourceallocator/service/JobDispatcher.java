@@ -33,6 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
  * needs, added to the units held by running jobs of the same type, stay
  * within the organization's usage limit. A job that cannot start stays
  * queued, and later jobs may still start ahead of it.
+ *
+ * <p>This keeps resources busy but is not strict first-come,
+ * first-served: a large job can wait indefinitely if smaller jobs keep
+ * arriving and taking the resources it needs.
  */
 @Service
 public class JobDispatcher {
