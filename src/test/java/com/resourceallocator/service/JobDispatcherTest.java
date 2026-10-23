@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -198,6 +199,32 @@ class JobDispatcherTest {
         assertThat(olderGpu.getStatus()).isEqualTo(JobStatus.RUNNING);
         assertThat(newerGpu.getStatus()).isEqualTo(JobStatus.QUEUED);
         assertThat(newestCpu.getStatus()).isEqualTo(JobStatus.RUNNING);
+    }
+
+    @Test
+    void lockAndCheckResourceInUseLocksAndReportsHeldResource() {
+        givenRunning();
+        when(jobRepository.findResourceIdsHeldByRunningJobs(ORG_ID))
+                .thenReturn(List.of(5L));
+
+        assertThat(dispatcher.lockAndCheckResourceInUse(ORG_ID, 5L))
+                .isTrue();
+        assertThat(dispatcher.lockAndCheckResourceInUse(ORG_ID, 6L))
+                .isFalse();
+        verify(organizationRepository, times(2)).findByIdForUpdate(ORG_ID);
+    }
+
+    @Test
+    void lockAndCheckResourceInUseFinishesExpiredLeasesFirst() {
+        Job expired = running(1L, gpuJob(1, 40),
+                Instant.now().minusSeconds(60));
+        givenRunning(expired);
+        when(jobRepository.findResourceIdsHeldByRunningJobs(ORG_ID))
+                .thenReturn(List.of());
+
+        assertThat(dispatcher.lockAndCheckResourceInUse(ORG_ID, 5L))
+                .isFalse();
+        assertThat(expired.getStatus()).isEqualTo(JobStatus.DONE);
     }
 
     private void givenRunning(final Job... jobs) {

@@ -1,8 +1,6 @@
 package com.resourceallocator.service;
 // AI-generated (Claude Code, Claude Opus 5.5)
 
-import com.resourceallocator.auth.ApiKeyAuthConfig;
-import com.resourceallocator.exception.ApiExceptionHandler;
 import com.resourceallocator.model.Job;
 import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
@@ -22,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -37,10 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class JobDispatcher {
-
-    private final ApiKeyAuthConfig apiKeyAuthConfig;
-
-    private final ApiExceptionHandler apiExceptionHandler;
 
     /** Reads and updates jobs and their resource assignments. */
     private final JobRepository jobRepository;
@@ -60,12 +55,10 @@ public class JobDispatcher {
      */
     public JobDispatcher(final JobRepository jobRepository,
             final ResourceRepository resourceRepository,
-            final OrganizationRepository organizationRepository, ApiExceptionHandler apiExceptionHandler, ApiKeyAuthConfig apiKeyAuthConfig) {
+            final OrganizationRepository organizationRepository) {
         this.jobRepository = jobRepository;
         this.resourceRepository = resourceRepository;
         this.organizationRepository = organizationRepository;
-        this.apiExceptionHandler = apiExceptionHandler;
-        this.apiKeyAuthConfig = apiKeyAuthConfig;
     }
 
     /**
@@ -89,15 +82,15 @@ public class JobDispatcher {
      */
     @Transactional
     public void dispatch(final Long organizationId, final Instant now) {
-        // Serializes dispatches per organization. findByIdForUpdate acquires a 
-        // a pessimistic lock, preventing concurrent dispatches on the same 
-        // resources, before the transaction commits
+        // Serializes dispatches per organization: findByIdForUpdate holds a
+        // pessimistic lock on the organization row until the transaction
+        // commits.
         Optional<Organization> organization =
                 organizationRepository.findByIdForUpdate(organizationId);
         if (organization.isEmpty()) {
             return;
         }
-        // Release any jobs that are currently done to update available resources
+        // Release finished jobs to update available resources
         Map<ResourceType, Integer> unitsInUse =
                 finishExpiredLeases(organizationId, now);
         Set<Long> busyResourceIds = new HashSet<>(jobRepository
@@ -126,23 +119,39 @@ public class JobDispatcher {
                 continue;
             }
             for (Resource resource : assigned) {
-                // Assignment is only committed after the transaction is completed.
-                // Reads can be stale, but safe. No other function will write concurrently.
+                // Assignment is only flushed at end of transaction
+                // Reads can be stale, organization lock
                 jobRepository.assignResource(job.getId(), resource.getId());
                 busyResourceIds.add(resource.getId());
             }
-            // Updates job status. Doesn't flush until after transaction is committed
-            // TODO: check delete job endpoint, if not committed currently, could delete a running job
-            // TODO: Add locking
+            // Updates job status. Doesn't flush until after transaction
             job.setStatus(JobStatus.RUNNING);
             job.setStartedAt(now);
             job.setLeaseEnd(now.plus(
                     Duration.ofHours(job.getMaxDurationHours())));
-            // TODO: Check delete resource logic. If this transaction is not yet committed
-            // delete will not see that this resource is in use.
             unitsInUse.merge(job.getResourceType(), job.getUnitsRequested(),
                     Integer::sum);
         }
+    }
+
+    /**
+     * Locks the organization, finishes expired leases, and reports whether
+     * a running job holds the resource. Must run inside the caller's
+     * transaction, so the lock is held until the caller commits and no
+     * dispatch can assign the resource before then.
+     *
+     * @param organizationId the organization that owns the resource
+     * @param resourceId the resource to check
+     * @return whether a running job holds the resource
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean lockAndCheckResourceInUse(final Long organizationId,
+            final Long resourceId) {
+        // Holds lock on organization, preventing other dispatches
+        organizationRepository.findByIdForUpdate(organizationId);
+        finishExpiredLeases(organizationId, Instant.now());
+        return jobRepository.findResourceIdsHeldByRunningJobs(organizationId)
+                .contains(resourceId);
     }
 
     // Marks running jobs whose lease has ended as done, and returns the
