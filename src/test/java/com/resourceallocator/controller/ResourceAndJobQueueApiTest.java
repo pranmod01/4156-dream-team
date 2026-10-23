@@ -221,7 +221,7 @@ class ResourceAndJobQueueApiTest {
     }
 
     @Test
-    void updateResourceOfAnotherOrganizationIsBadRequest() throws Exception {
+    void updateResourceOfAnotherOrganizationIsNotFound() throws Exception {
         Resource foreign = resourceRepository.save(new Resource(
                 otherOrganization.getId(), ResourceType.GPU, 80, null, true));
 
@@ -229,7 +229,7 @@ class ResourceAndJobQueueApiTest {
                         .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"online\": false}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test

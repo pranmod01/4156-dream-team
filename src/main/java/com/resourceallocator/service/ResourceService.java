@@ -5,6 +5,7 @@ import com.resourceallocator.dto.ResourceResponse;
 import com.resourceallocator.dto.UpdateResourceRequest;
 import com.resourceallocator.exception.ConflictException;
 import com.resourceallocator.exception.InvalidRequestException;
+import com.resourceallocator.exception.NotFoundException;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
 import com.resourceallocator.model.ResourceType;
@@ -66,7 +67,7 @@ public class ResourceService {
      * @param resourceId identifier of the resource to update
      * @param request the new online state
      * @return the updated resource
-     * @throws InvalidRequestException if the organization has no resource
+     * @throws NotFoundException if the organization has no resource
      *         with that identifier
      * @throws ConflictException if attempting to take a resource that
      *         is in use offline
@@ -76,7 +77,7 @@ public class ResourceService {
             final Long resourceId, final UpdateResourceRequest request) {
         Resource resource = resourceRepository
                 .findByIdAndOrganizationId(resourceId, organization.getId())
-                .orElseThrow(() -> new InvalidRequestException(
+                .orElseThrow(() -> new NotFoundException(
                         "Resource " + resourceId + " was not found."));
         // A resource held by a running job cannot be taken offline.
         if (!request.online() && jobDispatcher.lockAndCheckResourceInUse(

@@ -278,5 +278,5 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
             "online": false
         }
         ```
-    - `400 Bad Request` -- Also returned if the organization has no resource with the given ID.
+    - `404 Not Found` -- Returned if there is no resource with an ID associated with the organization.
     - `409 Conflict` -- Returned if attempting to take a resource offline while it is still running a job.

@@ -12,6 +12,7 @@ import com.resourceallocator.dto.ResourceResponse;
 import com.resourceallocator.dto.UpdateResourceRequest;
 import com.resourceallocator.exception.ConflictException;
 import com.resourceallocator.exception.InvalidRequestException;
+import com.resourceallocator.exception.NotFoundException;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
 import com.resourceallocator.model.ResourceType;
@@ -128,7 +129,7 @@ class ResourceServiceTest {
 
         assertThatThrownBy(() -> resourceService.updateResource(
                 organization, 99L, request))
-                .isInstanceOf(InvalidRequestException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("99");
     }
 
