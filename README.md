@@ -254,7 +254,8 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
 
 
 ### PATCH /resources/{resourceId}
-- Takes one of the organization's resources online or offline.
+- Takes one of the organization's resources online or offline. 
+- If a resource is in use, taking it offline will fail. The endpoint will block any new dispatches, check the job queue for any finished jobs, and then attempt to take the resource offline. 
 - Authentication: required
 - Path Parameters:
     - resourceId (integer, required): The ID of the resource to update.
@@ -278,3 +279,4 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
         }
         ```
     - `400 Bad Request` -- Also returned if the organization has no resource with the given ID.
+    - `409 Conflict` -- Returned if attempting to take a resource offline while it is still running a job.

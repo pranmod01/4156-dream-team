@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.resourceallocator.dto.AddResourceRequest;
 import com.resourceallocator.dto.ResourceResponse;
 import com.resourceallocator.dto.UpdateResourceRequest;
+import com.resourceallocator.exception.ConflictException;
 import com.resourceallocator.exception.InvalidRequestException;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
@@ -33,13 +34,17 @@ class ResourceServiceTest {
     @Mock
     private ResourceRepository resourceRepository;
 
+    @Mock
+    private JobDispatcher jobDispatcher;
+
     private ResourceService resourceService;
 
     private Organization organization;
 
     @BeforeEach
     void setUp() {
-        resourceService = new ResourceService(resourceRepository);
+        resourceService = new ResourceService(resourceRepository,
+                jobDispatcher);
         organization = new Organization("acme", "hash", 4, 2);
         ReflectionTestUtils.setField(organization, "id", ORG_ID);
     }
@@ -125,6 +130,37 @@ class ResourceServiceTest {
                 organization, 99L, request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("99");
+    }
+
+    @Test
+    void updateResourceRejectsResourceInUse() {
+        Resource resource = withId(
+                new Resource(ORG_ID, ResourceType.GPU, 80, null, true), 5L);
+        when(resourceRepository.findByIdAndOrganizationId(5L, ORG_ID))
+                .thenReturn(Optional.of(resource));
+        when(jobDispatcher.lockAndCheckResourceInUse(ORG_ID, 5L))
+                .thenReturn(true);
+
+        assertThatThrownBy(() ->
+                resourceService.updateResource(
+                        organization, 5L, new UpdateResourceRequest(false)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("in use");
+        assertThat(resource.isOnline()).isTrue();
+    }
+
+    @Test
+    void updateResourceDoesNotCallJobDispatcherWhenSettingOnline() {
+        Resource resource = withId(
+                new Resource(ORG_ID, ResourceType.GPU, 80, null, true), 5L);
+        when(resourceRepository.findByIdAndOrganizationId(5L, ORG_ID))
+                .thenReturn(Optional.of(resource));
+
+        ResourceResponse response = resourceService.updateResource(
+                organization, 5L, new UpdateResourceRequest(true));
+
+        assertThat(response.online()).isTrue();
+        verify(jobDispatcher, never()).lockAndCheckResourceInUse(ORG_ID, 5L);
     }
 
     // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
