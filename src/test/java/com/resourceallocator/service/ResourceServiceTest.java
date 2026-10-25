@@ -3,11 +3,13 @@ package com.resourceallocator.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.resourceallocator.dto.AddResourceRequest;
+import com.resourceallocator.dto.DeleteResourceResponse;
 import com.resourceallocator.dto.ResourceResponse;
 import com.resourceallocator.dto.UpdateResourceRequest;
 import com.resourceallocator.exception.ConflictException;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -180,6 +183,68 @@ class ResourceServiceTest {
         assertThat(responses).containsExactly(
                 new ResourceResponse(1L, ResourceType.CPU, 32, 8, true),
                 new ResourceResponse(2L, ResourceType.GPU, 80, null, false));
+    }
+    // END AI-generated
+
+    // BEGIN AI-generated (Claude, Claude Opus 5.5), reviewed by Rob
+    @Test
+    void deleteResourceDeletesFreeResource() {
+        Resource resource = withId(
+                new Resource(ORG_ID, ResourceType.GPU, 80, null, true), 5L);
+        when(resourceRepository.findByIdAndOrganizationId(5L, ORG_ID))
+                .thenReturn(Optional.of(resource));
+        when(jobDispatcher.lockAndCheckResourceInUse(ORG_ID, 5L))
+                .thenReturn(false);
+
+        DeleteResourceResponse response =
+                resourceService.deleteResource(organization, 5L);
+
+        assertThat(response.deletedResourceId()).isEqualTo(5L);
+        verify(resourceRepository).delete(resource);
+    }
+
+    @Test
+    void deleteResourceRejectsResourceInUse() {
+        Resource resource = withId(
+                new Resource(ORG_ID, ResourceType.GPU, 80, null, true), 5L);
+        when(resourceRepository.findByIdAndOrganizationId(5L, ORG_ID))
+                .thenReturn(Optional.of(resource));
+        when(jobDispatcher.lockAndCheckResourceInUse(ORG_ID, 5L))
+                .thenReturn(true);
+
+        assertThatThrownBy(() ->
+                resourceService.deleteResource(organization, 5L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("5");
+        verify(resourceRepository, never()).delete(any(Resource.class));
+    }
+
+    @Test
+    void deleteResourceRejectsUnknownOrForeignResource() {
+        when(resourceRepository.findByIdAndOrganizationId(99L, ORG_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                resourceService.deleteResource(organization, 99L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("99");
+        verify(resourceRepository, never()).delete(any(Resource.class));
+    }
+
+    @Test
+    void deleteResourceLocksBeforeLookingUpTheResource() {
+        Resource resource = withId(
+                new Resource(ORG_ID, ResourceType.GPU, 80, null, true), 5L);
+        when(resourceRepository.findByIdAndOrganizationId(5L, ORG_ID))
+                .thenReturn(Optional.of(resource));
+
+        resourceService.deleteResource(organization, 5L);
+
+        InOrder order = inOrder(jobDispatcher, resourceRepository);
+        order.verify(jobDispatcher).lockAndCheckResourceInUse(ORG_ID, 5L);
+        order.verify(resourceRepository)
+                .findByIdAndOrganizationId(5L, ORG_ID);
+        order.verify(resourceRepository).delete(resource);
     }
     // END AI-generated
 
