@@ -280,3 +280,21 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
         ```
     - `404 Not Found` -- Returned if there is no resource with an ID associated with the organization.
     - `409 Conflict` -- Returned if attempting to take a resource offline while it is still running a job.
+
+### DELETE /resources/{resourceId}
+- Permanently deletes one of the organization's resources. Deleted resources are no longer considered for new jobs.
+- A resource held by a running job cannot be deleted. The endpoint blocks any new dispatches, marks jobs whose lease has ended as done, and then checks whether a running job still holds the resource.
+- The resource's assignments to finished jobs are removed along with it.
+- Authentication: required
+- Path Parameters:
+    - resourceId (integer, required): The ID of the resource to delete.
+
+- Responses:
+    - `200 OK` -- Resource deleted successfully. Returns the ID of the deleted resource.
+        ```
+        {
+            "deletedResourceId": 1
+        }
+        ```
+    - `404 Not Found` -- The organization has no resource with the given ID.
+    - `409 Conflict` -- The resource is held by a running job and cannot be deleted.
