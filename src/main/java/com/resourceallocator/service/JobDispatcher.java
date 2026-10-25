@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -85,11 +86,15 @@ public class JobDispatcher {
      */
     @Transactional
     public void dispatch(final Long organizationId, final Instant now) {
+        // Serializes dispatches per organization: findByIdForUpdate holds a
+        // pessimistic lock on the organization row until the transaction
+        // commits.
         Optional<Organization> organization =
                 organizationRepository.findByIdForUpdate(organizationId);
         if (organization.isEmpty()) {
             return;
         }
+        // Release finished jobs to update available resources
         Map<ResourceType, Integer> unitsInUse =
                 finishExpiredLeases(organizationId, now);
         Set<Long> busyResourceIds = new HashSet<>(jobRepository
@@ -101,11 +106,13 @@ public class JobDispatcher {
         for (Job job : jobRepository
                 .findByOrganizationIdAndStatusOrderBySubmittedAtAscIdAsc(
                         organizationId, JobStatus.QUEUED)) {
+            // Skip jobs that would exceed usage limit
             int used = unitsInUse.getOrDefault(job.getResourceType(), 0);
             if (used + job.getUnitsRequested()
                     > usageLimit(organization.get(), job.getResourceType())) {
                 continue;
             }
+            // Get list of suitable units for this job, try to assign them
             List<Resource> assigned = onlineResources.stream()
                     .filter(resource -> !busyResourceIds.contains(
                             resource.getId()))
@@ -116,9 +123,12 @@ public class JobDispatcher {
                 continue;
             }
             for (Resource resource : assigned) {
+                // Assignment is only flushed at end of transaction
+                // Reads can be stale, organization lock
                 jobRepository.assignResource(job.getId(), resource.getId());
                 busyResourceIds.add(resource.getId());
             }
+            // Updates job status. Doesn't flush until after transaction
             job.setStatus(JobStatus.RUNNING);
             job.setStartedAt(now);
             job.setLeaseEnd(now.plus(
@@ -126,6 +136,26 @@ public class JobDispatcher {
             unitsInUse.merge(job.getResourceType(), job.getUnitsRequested(),
                     Integer::sum);
         }
+    }
+
+    /**
+     * Locks the organization, finishes expired leases, and reports whether
+     * a running job holds the resource. Must run inside the caller's
+     * transaction, so the lock is held until the caller commits and no
+     * dispatch can assign the resource before then.
+     *
+     * @param organizationId the organization that owns the resource
+     * @param resourceId the resource to check
+     * @return whether a running job holds the resource
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean lockAndCheckResourceInUse(final Long organizationId,
+            final Long resourceId) {
+        // Holds lock on organization, preventing other dispatches
+        organizationRepository.findByIdForUpdate(organizationId);
+        finishExpiredLeases(organizationId, Instant.now());
+        return jobRepository.findResourceIdsHeldByRunningJobs(organizationId)
+                .contains(resourceId);
     }
 
     // Marks running jobs whose lease has ended as done, and returns the

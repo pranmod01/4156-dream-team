@@ -1,5 +1,6 @@
 package com.resourceallocator.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -163,7 +164,63 @@ class ResourceAndJobQueueApiTest {
     }
 
     @Test
-    void updateResourceOfAnotherOrganizationIsBadRequest() throws Exception {
+    void updateResourceHeldByRunningJobIsConflict() throws Exception {
+        Resource gpu = resourceRepository.save(new Resource(
+                organization.getId(), ResourceType.GPU, 80, null, true));
+        Job running = new Job(organization.getId(), ResourceType.GPU, 1, 40,
+                null, 1);
+        running.setStatus(JobStatus.RUNNING);
+        running.setStartedAt(Instant.now());
+        running.setLeaseEnd(Instant.now().plusSeconds(3600));
+        running = jobRepository.saveAndFlush(running);
+        jobRepository.assignResource(running.getId(), gpu.getId());
+
+        mockMvc.perform(patch("/resources/" + gpu.getId())
+                        .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"online\": false}"))
+                .andExpect(status().isConflict());
+        assertThat(resourceRepository.findById(gpu.getId()).orElseThrow()
+                .isOnline()).isTrue();
+    }
+
+    @Test
+    void updateResourceHeldByExpiredJobGoesOffline() throws Exception {
+        Resource gpu = resourceRepository.save(new Resource(
+                organization.getId(), ResourceType.GPU, 80, null, true));
+        Job expired = new Job(organization.getId(), ResourceType.GPU, 1, 40,
+                null, 1);
+        expired.setStatus(JobStatus.RUNNING);
+        expired.setStartedAt(Instant.now().minusSeconds(7200));
+        expired.setLeaseEnd(Instant.now().minusSeconds(3600));
+        expired = jobRepository.saveAndFlush(expired);
+        jobRepository.assignResource(expired.getId(), gpu.getId());
+
+        mockMvc.perform(patch("/resources/" + gpu.getId())
+                        .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"online\": false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.online").value(false));
+        assertThat(jobRepository.findById(expired.getId()).orElseThrow()
+                .getStatus()).isEqualTo(JobStatus.DONE);
+    }
+
+    @Test
+    void updateResourceCanBringOfflineResourceOnline() throws Exception {
+        Resource gpu = resourceRepository.save(new Resource(
+                organization.getId(), ResourceType.GPU, 80, null, false));
+
+        mockMvc.perform(patch("/resources/" + gpu.getId())
+                        .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"online\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.online").value(true));
+    }
+
+    @Test
+    void updateResourceOfAnotherOrganizationIsNotFound() throws Exception {
         Resource foreign = resourceRepository.save(new Resource(
                 otherOrganization.getId(), ResourceType.GPU, 80, null, true));
 
@@ -171,7 +228,7 @@ class ResourceAndJobQueueApiTest {
                         .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"online\": false}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
