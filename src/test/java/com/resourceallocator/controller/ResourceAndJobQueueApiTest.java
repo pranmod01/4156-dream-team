@@ -14,7 +14,6 @@ import com.resourceallocator.auth.ApiKeyAuthInterceptor;
 import com.resourceallocator.auth.ApiKeyHasher;
 import com.resourceallocator.model.Job;
 import com.resourceallocator.model.JobStatus;
-import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
 import com.resourceallocator.model.ResourceType;
