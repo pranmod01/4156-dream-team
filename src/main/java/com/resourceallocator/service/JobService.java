@@ -83,8 +83,8 @@ public class JobService {
      * @param organization the authenticated organization
      * @param jobId identifier of the job
      * @return the job
-     * @throws InvalidRequestException if the organization has no job with
-     *         that identifier
+     * @throws NotFoundException if the organization has no job with that
+     *         identifier
      */
     @Transactional
     public JobResponse getJobStatus(final Organization organization,
@@ -92,7 +92,7 @@ public class JobService {
         jobDispatcher.dispatch(organization.getId());
         Job job = jobRepository
                 .findByIdAndOrganizationId(jobId, organization.getId())
-                .orElseThrow(() -> new InvalidRequestException(
+                .orElseThrow(() -> new NotFoundException(
                         "Job " + jobId + " was not found."));
         return toResponse(job);
     }

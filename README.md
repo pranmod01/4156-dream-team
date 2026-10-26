@@ -129,7 +129,7 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
             "resourceIds": [3]
         }
         ```
-    - `400 Bad Request` -- Also returned if the organization has no job with the given ID.
+    - `404 Not Found` -- The organization has no job with the given ID.
 
 
 ### DELETE /jobs/{jobId}
