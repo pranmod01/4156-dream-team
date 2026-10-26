@@ -11,10 +11,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.resourceallocator.auth.ApiKeyAuthInterceptor;
 import com.resourceallocator.auth.ApiKeyHasher;
 import com.resourceallocator.model.Organization;
-import com.resourceallocator.model.Resource;
-import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.repository.OrganizationRepository;
-import com.resourceallocator.repository.ResourceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,17 +23,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * Exercises the create client and list resources endpoints through the
- * full Spring stack against the in-memory test database. Each test runs
- * in a transaction that is rolled back afterwards.
+ * Exercises the {@link ClientController} endpoints through the full Spring
+ * stack against the in-memory test database. Each test runs in a
+ * transaction that is rolled back afterwards.
  */
 @SpringBootTest
 @Transactional
-class ClientAndResourceListApiTest {
+class ClientApiTest {
 
     private static final String API_KEY = "test-api-key";
 
-    private static final String OTHER_API_KEY = "other-api-key";
+    /** Longest organization name the API accepts. */
+    private static final int MAX_ORG_NAME_LENGTH = 255;
 
     @Autowired
     private WebApplicationContext context;
@@ -44,22 +42,13 @@ class ClientAndResourceListApiTest {
     @Autowired
     private OrganizationRepository organizationRepository;
 
-    @Autowired
-    private ResourceRepository resourceRepository;
-
     private MockMvc mockMvc;
-
-    private Organization organization;
-
-    private Organization otherOrganization;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
-        organization = organizationRepository.save(new Organization(
+        organizationRepository.save(new Organization(
                 "test-org", ApiKeyHasher.hash(API_KEY), 4, 2));
-        otherOrganization = organizationRepository.save(new Organization(
-                "other-org", ApiKeyHasher.hash(OTHER_API_KEY), 4, 2));
     }
 
     @Test
@@ -88,7 +77,7 @@ class ClientAndResourceListApiTest {
         mockMvc.perform(get("/resources")
                         .header(ApiKeyAuthInterceptor.API_KEY_HEADER, apiKey))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.resources", hasSize(0)));
     }
 
     @Test
@@ -119,32 +108,23 @@ class ClientAndResourceListApiTest {
     }
 
     @Test
-    void listResourcesReturnsOnlyCallersResourcesIncludingOffline()
-            throws Exception {
-        Resource cpu = resourceRepository.save(new Resource(
-                organization.getId(), ResourceType.CPU, 32, 8, true));
-        Resource gpu = resourceRepository.save(new Resource(
-                organization.getId(), ResourceType.GPU, 80, null, false));
-        resourceRepository.save(new Resource(
-                otherOrganization.getId(), ResourceType.GPU, 80, null, true));
-
-        mockMvc.perform(get("/resources")
-                        .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id").value(cpu.getId()))
-                .andExpect(jsonPath("$[0].resourceType").value("CPU"))
-                .andExpect(jsonPath("$[0].cores").value(8))
-                .andExpect(jsonPath("$[0].online").value(true))
-                .andExpect(jsonPath("$[1].id").value(gpu.getId()))
-                .andExpect(jsonPath("$[1].resourceType").value("GPU"))
-                .andExpect(jsonPath("$[1].online").value(false));
+    void createClientAcceptsNameAtMaxLength() throws Exception {
+        String orgName = "a".repeat(MAX_ORG_NAME_LENGTH);
+        mockMvc.perform(post("/clients")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(clientBody(orgName)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orgName").value(orgName));
     }
 
     @Test
-    void listResourcesWithoutApiKeyIsUnauthorized() throws Exception {
-        mockMvc.perform(get("/resources"))
-                .andExpect(status().isUnauthorized());
+    void createClientRejectsNameOverMaxLength() throws Exception {
+        mockMvc.perform(post("/clients")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(clientBody(
+                                "a".repeat(MAX_ORG_NAME_LENGTH + 1))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors", hasSize(1)));
     }
 
     private static String clientBody(final String orgName) {

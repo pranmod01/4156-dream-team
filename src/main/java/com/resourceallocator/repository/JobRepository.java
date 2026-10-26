@@ -95,5 +95,22 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             + "VALUES (:jobId, :resourceId)", nativeQuery = true)
     void assignResource(@Param("jobId") Long jobId,
             @Param("resourceId") Long resourceId);
+
+    /**
+     * Lists which running job holds each of an organization's busy
+     * resources, as {@code [resourceId, jobId]} pairs.
+     *
+     * @param organizationId the owning organization's identifier
+     * @return one pair per resource held by a running job
+     */
+    @Query(value = """
+            SELECT jr.resource_id, jr.job_id
+            FROM job_resource jr
+            JOIN job j ON j.id = jr.job_id
+            WHERE j.organization_id = :organizationId
+              AND j.job_status = 'RUNNING'
+            """, nativeQuery = true)
+    List<Object[]> findRunningAssignments(
+            @Param("organizationId") Long organizationId);
     // END AI-generated
 }

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClientService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.service</a> &gt; <span class="el_source">ClientService.java</span></div><h1>ClientService.java</h1><pre class="source lang-java linenums">package com.resourceallocator.service;
+// AI-generated (Claude Code, Claude Opus 5.5)
+
+import com.resourceallocator.auth.ApiKeyHasher;
+import com.resourceallocator.dto.CreateClientRequest;
+import com.resourceallocator.dto.CreateClientResponse;
+import com.resourceallocator.exception.ConflictException;
+import com.resourceallocator.model.Organization;
+import com.resourceallocator.repository.OrganizationRepository;
+import java.security.SecureRandom;
+import java.util.Base64;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Registers client organizations and issues their API keys.
+ */
+@Service
+public class ClientService {
+
+    /** Number of random bytes in an API key (256 bits). */
+    private static final int API_KEY_BYTES = 32;
+
+    /** Source of randomness for API keys. */
+<span class="fc" id="L26">    private static final SecureRandom RANDOM = new SecureRandom();</span>
+
+    /** Persists organizations. */
+    private final OrganizationRepository organizationRepository;
+
+    /**
+     * Creates the service.
+     *
+     * @param organizationRepository repository used to persist organizations
+     */
+    public ClientService(
+<span class="fc" id="L37">            final OrganizationRepository organizationRepository) {</span>
+<span class="fc" id="L38">        this.organizationRepository = organizationRepository;</span>
+<span class="fc" id="L39">    }</span>
+
+    /**
+     * Registers a new organization and issues it an API key. Only the
+     * key's hash is stored.
+     *
+     * @param request the organization to create
+     * @return the created organization and its raw API key
+     * @throws ConflictException if the organization name is already taken
+     */
+    @Transactional
+    public CreateClientResponse createClient(
+            final CreateClientRequest request) {
+<span class="fc" id="L52">        String orgName = request.orgName().trim();</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        if (organizationRepository.existsByOrgName(orgName)) {</span>
+<span class="fc" id="L54">            throw duplicateName(orgName);</span>
+        }
+<span class="fc" id="L56">        String apiKey = generateApiKey();</span>
+<span class="fc" id="L57">        Organization organization = new Organization(</span>
+                orgName,
+<span class="fc" id="L59">                ApiKeyHasher.hash(apiKey),</span>
+<span class="fc" id="L60">                request.maxCpus(),</span>
+<span class="fc" id="L61">                request.maxGpus());</span>
+        try {
+            // Flush now so a concurrent registration of the same name
+            // fails here, as a 409, rather than at commit time.
+<span class="fc" id="L65">            organization = organizationRepository.saveAndFlush(organization);</span>
+<span class="fc" id="L66">        } catch (DataIntegrityViolationException e) {</span>
+<span class="fc" id="L67">            throw duplicateName(orgName);</span>
+<span class="fc" id="L68">        }</span>
+<span class="fc" id="L69">        return CreateClientResponse.from(organization, apiKey);</span>
+    }
+
+    private static ConflictException duplicateName(final String orgName) {
+<span class="fc" id="L73">        return new ConflictException(</span>
+                &quot;Organization '&quot; + orgName + &quot;' already exists.&quot;);
+    }
+
+    private static String generateApiKey() {
+<span class="fc" id="L78">        byte[] bytes = new byte[API_KEY_BYTES];</span>
+<span class="fc" id="L79">        RANDOM.nextBytes(bytes);</span>
+<span class="fc" id="L80">        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

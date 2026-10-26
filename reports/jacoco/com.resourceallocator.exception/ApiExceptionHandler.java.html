@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.exception</a> &gt; <span class="el_source">ApiExceptionHandler.java</span></div><h1>ApiExceptionHandler.java</h1><pre class="source lang-java linenums">package com.resourceallocator.exception;
+
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+/**
+ * Converts API exceptions into RFC 9457 problem detail responses.
+ */
+@RestControllerAdvice
+<span class="fc" id="L15">public class ApiExceptionHandler {</span>
+
+    /**
+     * Maps a missing or invalid API key to 401 Unauthorized.
+     *
+     * @param ex the exception
+     * @return the problem detail
+     */
+    @ExceptionHandler(UnauthorizedException.class)
+    public ProblemDetail handleUnauthorized(final UnauthorizedException ex) {
+<span class="fc" id="L25">        return ProblemDetail.forStatusAndDetail(</span>
+<span class="fc" id="L26">                HttpStatus.UNAUTHORIZED, ex.getMessage());</span>
+    }
+
+    /**
+     * Maps a business rule violation to 400 Bad Request.
+     *
+     * @param ex the exception
+     * @return the problem detail
+     */
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleInvalidRequest(
+            final InvalidRequestException ex) {
+<span class="fc" id="L38">        return ProblemDetail.forStatusAndDetail(</span>
+<span class="fc" id="L39">                HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Maps a request that clashes with existing data to 409 Conflict.
+     *
+     * @param ex the exception
+     * @return the problem detail
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ProblemDetail handleConflict(final ConflictException ex) {
+<span class="fc" id="L51">        return ProblemDetail.forStatusAndDetail(</span>
+<span class="fc" id="L52">                HttpStatus.CONFLICT, ex.getMessage());</span>
+    }
+
+    /**
+     * Maps a reference to a missing entity to 404 Not Found.
+     *
+     * @param ex the exception
+     * @return the problem detail
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ProblemDetail handleNotFound(final NotFoundException ex) {
+<span class="fc" id="L63">        return ProblemDetail.forStatusAndDetail(</span>
+<span class="fc" id="L64">                HttpStatus.NOT_FOUND, ex.getMessage());</span>
+    }
+    // END AI-generated
+
+    /**
+     * Maps a request body that fails bean validation to 400 Bad Request,
+     * listing each invalid field.
+     *
+     * @param ex the exception
+     * @return the problem detail, with an {@code errors} property
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleInvalidBody(
+            final MethodArgumentNotValidException ex) {
+<span class="fc" id="L78">        List&lt;String&gt; errors = ex.getBindingResult().getFieldErrors()</span>
+<span class="fc" id="L79">                .stream()</span>
+<span class="fc" id="L80">                .map(ApiExceptionHandler::describe)</span>
+<span class="fc" id="L81">                .toList();</span>
+<span class="fc" id="L82">        ProblemDetail problem = ProblemDetail.forStatusAndDetail(</span>
+                HttpStatus.BAD_REQUEST, &quot;Request body failed validation.&quot;);
+<span class="fc" id="L84">        problem.setProperty(&quot;errors&quot;, errors);</span>
+<span class="fc" id="L85">        return problem;</span>
+    }
+
+    private static String describe(final FieldError error) {
+<span class="fc" id="L89">        return error.getField() + &quot;: &quot; + error.getDefaultMessage();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiKeyAuthInterceptor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.auth</a> &gt; <span class="el_source">ApiKeyAuthInterceptor.java</span></div><h1>ApiKeyAuthInterceptor.java</h1><pre class="source lang-java linenums">package com.resourceallocator.auth;
+
+import com.resourceallocator.exception.UnauthorizedException;
+import com.resourceallocator.model.Organization;
+import com.resourceallocator.repository.OrganizationRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+/**
+ * Authenticates the caller's API key before any protected endpoint runs.
+ *
+ * &lt;p&gt;Authenticating here, rather than inside each controller, means an
+ * invalid key is rejected with 401 before the request body or query
+ * parameters are validated. On success the caller's organization is stored
+ * in the request attribute {@link #ORGANIZATION_ATTRIBUTE}.
+ */
+@Component
+public class ApiKeyAuthInterceptor implements HandlerInterceptor {
+
+    /** Request header that carries the caller's API key. */
+    public static final String API_KEY_HEADER = &quot;X-API-Key&quot;;
+
+    /** Request attribute holding the authenticated {@link Organization}. */
+    public static final String ORGANIZATION_ATTRIBUTE =
+            &quot;authenticatedOrganization&quot;;
+
+    /** Looks up organizations by API key hash. */
+    private final OrganizationRepository organizationRepository;
+
+    /**
+     * Creates the interceptor.
+     *
+     * @param organizationRepository repository used to resolve API keys
+     */
+    public ApiKeyAuthInterceptor(
+<span class="fc" id="L38">            final OrganizationRepository organizationRepository) {</span>
+<span class="fc" id="L39">        this.organizationRepository = organizationRepository;</span>
+<span class="fc" id="L40">    }</span>
+
+    /**
+     * Resolves the API key to an organization or rejects the request.
+     *
+     * @param request the current request
+     * @param response the current response
+     * @param handler the handler that will serve the request
+     * @return {@code true} so the request continues to the handler
+     * @throws UnauthorizedException if the key is missing or unknown
+     */
+    @Override
+    public boolean preHandle(final HttpServletRequest request,
+            final HttpServletResponse response, final Object handler) {
+<span class="fc" id="L54">        String apiKey = request.getHeader(API_KEY_HEADER);</span>
+<span class="pc bpc" id="L55" title="1 of 4 branches missed.">        if (apiKey == null || apiKey.isBlank()) {</span>
+<span class="fc" id="L56">            throw new UnauthorizedException(</span>
+                    &quot;Missing &quot; + API_KEY_HEADER + &quot; header.&quot;);
+        }
+<span class="fc" id="L59">        Organization organization = organizationRepository</span>
+<span class="fc" id="L60">                .findByApiKeyHash(ApiKeyHasher.hash(apiKey))</span>
+<span class="fc" id="L61">                .orElseThrow(() -&gt;</span>
+<span class="fc" id="L62">                        new UnauthorizedException(&quot;Invalid API key.&quot;));</span>
+<span class="fc" id="L63">        request.setAttribute(ORGANIZATION_ATTRIBUTE, organization);</span>
+<span class="fc" id="L64">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClientController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.controller</a> &gt; <span class="el_source">ClientController.java</span></div><h1>ClientController.java</h1><pre class="source lang-java linenums">package com.resourceallocator.controller;
+// AI-generated (Claude Code, Claude Opus 5.5)
+
+import com.resourceallocator.dto.CreateClientRequest;
+import com.resourceallocator.dto.CreateClientResponse;
+import com.resourceallocator.service.ClientService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Endpoint for registering new client organizations. Unlike the other
+ * endpoints it needs no API key, since this is where keys are issued.
+ */
+@RestController
+@RequestMapping(&quot;/clients&quot;)
+public class ClientController {
+
+    /** Performs client registration. */
+    private final ClientService clientService;
+
+    /**
+     * Creates the controller.
+     *
+     * @param clientService service that registers clients
+     */
+<span class="fc" id="L31">    public ClientController(final ClientService clientService) {</span>
+<span class="fc" id="L32">        this.clientService = clientService;</span>
+<span class="fc" id="L33">    }</span>
+
+    /**
+     * Registers a new organization and returns its API key.
+     *
+     * @param request the organization to create
+     * @return 201 Created with the organization and its API key
+     */
+    @PostMapping
+    public ResponseEntity&lt;CreateClientResponse&gt; createClient(
+            @Valid @RequestBody final CreateClientRequest request) {
+<span class="fc" id="L44">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L45">                .body(clientService.createClient(request));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

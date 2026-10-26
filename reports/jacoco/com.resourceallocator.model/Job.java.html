@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Job.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.model</a> &gt; <span class="el_source">Job.java</span></div><h1>Job.java</h1><pre class="source lang-java linenums">package com.resourceallocator.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+
+/**
+ * A request by an organization to run work on one or more resources.
+ */
+@Entity
+@Table(name = &quot;job&quot;)
+public class Job {
+
+    /** Database-generated identifier. */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /** Identifier of the organization that submitted the job. */
+    @Column(name = &quot;organization_id&quot;, nullable = false, updatable = false)
+    private Long organizationId;
+
+    /** Type of resource the job needs. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;resource_type&quot;, nullable = false, updatable = false,
+            length = 10)
+    private ResourceType resourceType;
+
+    /** Number of resources of {@link #resourceType} the job needs. */
+    @Column(name = &quot;units_requested&quot;, nullable = false, updatable = false)
+    private int unitsRequested;
+
+    /** Minimum memory each resource must have, in gigabytes. */
+    @Column(name = &quot;min_memory_gb&quot;, nullable = false, updatable = false)
+    private int minMemoryGb;
+
+    /** Minimum cores each CPU must have; {@code null} for GPU jobs. */
+    @Column(name = &quot;min_cores&quot;, updatable = false)
+    private Integer minCores;
+
+    /** Maximum lease length once the job starts, in hours. */
+    @Column(name = &quot;max_duration_hours&quot;, nullable = false, updatable = false)
+    private int maxDurationHours;
+
+    /** Current lifecycle state of the job. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;job_status&quot;, nullable = false, length = 10)
+    private JobStatus status;
+
+    /** When the job was submitted; determines its queue position. */
+    @Column(name = &quot;submitted_at&quot;, nullable = false, updatable = false)
+    private Instant submittedAt;
+
+    /** When the job started running, or {@code null} if it has not. */
+    @Column(name = &quot;started_at&quot;)
+    private Instant startedAt;
+
+    /** When the job's lease ends, or {@code null} if it has not started. */
+    @Column(name = &quot;lease_end&quot;)
+    private Instant leaseEnd;
+
+    /**
+     * Creates an empty job. Required by JPA.
+     */
+<span class="fc" id="L71">    protected Job() {</span>
+        // Required by JPA.
+<span class="fc" id="L73">    }</span>
+
+    /**
+     * Creates a new queued job submitted at the current time.
+     *
+     * @param organizationId identifier of the submitting organization
+     * @param resourceType type of resource the job needs
+     * @param unitsRequested number of resources the job needs
+     * @param minMemoryGb minimum memory per resource, in gigabytes
+     * @param minCores minimum cores per CPU, or {@code null} for GPU jobs
+     * @param maxDurationHours maximum lease length, in hours
+     */
+    public Job(final Long organizationId, final ResourceType resourceType,
+            final int unitsRequested, final int minMemoryGb,
+<span class="fc" id="L87">            final Integer minCores, final int maxDurationHours) {</span>
+<span class="fc" id="L88">        this.organizationId = organizationId;</span>
+<span class="fc" id="L89">        this.resourceType = resourceType;</span>
+<span class="fc" id="L90">        this.unitsRequested = unitsRequested;</span>
+<span class="fc" id="L91">        this.minMemoryGb = minMemoryGb;</span>
+<span class="fc" id="L92">        this.minCores = minCores;</span>
+<span class="fc" id="L93">        this.maxDurationHours = maxDurationHours;</span>
+<span class="fc" id="L94">        this.status = JobStatus.QUEUED;</span>
+<span class="fc" id="L95">        this.submittedAt = Instant.now();</span>
+<span class="fc" id="L96">    }</span>
+
+    /**
+     * Returns the job's identifier.
+     *
+     * @return the identifier, or {@code null} if not yet persisted
+     */
+    public Long getId() {
+<span class="fc" id="L104">        return id;</span>
+    }
+
+    /**
+     * Returns the identifier of the submitting organization.
+     *
+     * @return the submitting organization's identifier
+     */
+    public Long getOrganizationId() {
+<span class="fc" id="L113">        return organizationId;</span>
+    }
+
+    /**
+     * Returns the type of resource the job needs.
+     *
+     * @return the resource type
+     */
+    public ResourceType getResourceType() {
+<span class="fc" id="L122">        return resourceType;</span>
+    }
+
+    /**
+     * Returns the number of resources the job needs.
+     *
+     * @return the number of units requested
+     */
+    public int getUnitsRequested() {
+<span class="fc" id="L131">        return unitsRequested;</span>
+    }
+
+    /**
+     * Returns the minimum memory each resource must have.
+     *
+     * @return minimum memory in gigabytes
+     */
+    public int getMinMemoryGb() {
+<span class="fc" id="L140">        return minMemoryGb;</span>
+    }
+
+    /**
+     * Returns the minimum cores each CPU must have.
+     *
+     * @return the minimum core count, or {@code null} for GPU jobs
+     */
+    public Integer getMinCores() {
+<span class="fc" id="L149">        return minCores;</span>
+    }
+
+    /**
+     * Returns the maximum lease length.
+     *
+     * @return maximum duration in hours
+     */
+    public int getMaxDurationHours() {
+<span class="fc" id="L158">        return maxDurationHours;</span>
+    }
+
+    /**
+     * Returns the job's current lifecycle state.
+     *
+     * @return the job status
+     */
+    public JobStatus getStatus() {
+<span class="fc" id="L167">        return status;</span>
+    }
+
+    /**
+     * Sets the job's lifecycle state.
+     *
+     * @param status the new job status
+     */
+    public void setStatus(final JobStatus status) {
+<span class="fc" id="L176">        this.status = status;</span>
+<span class="fc" id="L177">    }</span>
+
+    /**
+     * Returns when the job was submitted.
+     *
+     * @return the submission time
+     */
+    public Instant getSubmittedAt() {
+<span class="fc" id="L185">        return submittedAt;</span>
+    }
+
+    /**
+     * Returns when the job started running.
+     *
+     * @return the start time, or {@code null} if it has not started
+     */
+    public Instant getStartedAt() {
+<span class="fc" id="L194">        return startedAt;</span>
+    }
+
+    /**
+     * Sets when the job started running.
+     *
+     * @param startedAt the start time
+     */
+    public void setStartedAt(final Instant startedAt) {
+<span class="fc" id="L203">        this.startedAt = startedAt;</span>
+<span class="fc" id="L204">    }</span>
+
+    /**
+     * Returns when the job's lease ends.
+     *
+     * @return the lease end, or {@code null} if it has not started
+     */
+    public Instant getLeaseEnd() {
+<span class="fc" id="L212">        return leaseEnd;</span>
+    }
+
+    /**
+     * Sets when the job's lease ends.
+     *
+     * @param leaseEnd the lease end time
+     */
+    public void setLeaseEnd(final Instant leaseEnd) {
+<span class="fc" id="L221">        this.leaseEnd = leaseEnd;</span>
+<span class="fc" id="L222">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

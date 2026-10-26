@@ -1,4 +1,5 @@
 // AI-generated (Claude, Claude Opus 5.5), reviewed by Rob
+// AI-edited (Claude, Claude Opus 5.5): GET /resources response shape
 package com.resourceallocator.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,8 +102,8 @@ class DeleteResourceApiTest {
         mockMvc.perform(get("/resources")
                         .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].id").value(kept.getId()));
+                .andExpect(jsonPath("$.resources", hasSize(1)))
+                .andExpect(jsonPath("$.resources[0].id").value(kept.getId()));
     }
 
     @Test

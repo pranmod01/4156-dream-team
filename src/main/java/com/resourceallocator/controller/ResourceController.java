@@ -3,13 +3,15 @@ package com.resourceallocator.controller;
 import com.resourceallocator.auth.ApiKeyAuthInterceptor;
 import com.resourceallocator.dto.AddResourceRequest;
 import com.resourceallocator.dto.DeleteResourceResponse;
+import com.resourceallocator.dto.ResourceFilter;
+import com.resourceallocator.dto.ResourceListResponse;
 import com.resourceallocator.dto.ResourceResponse;
 import com.resourceallocator.dto.UpdateResourceRequest;
 import com.resourceallocator.model.Organization;
+import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.service.ResourceService;
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,12 +21,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
- * Endpoints for registering, listing, deleting, and changing the online
- * state of resources.
+ * Endpoints for registering resources, viewing their status, deleting
+ * them, and changing their online state.
  * Every request needs an {@code X-API-Key} header.
  */
 @RestController
@@ -84,16 +87,34 @@ public class ResourceController {
 
     // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
     /**
-     * Lists all of the caller's resources and whether each is online.
+     * Lists the caller's resources with their current status, and the
+     * organization's usage against its limits. All filters are optional;
+     * {@code resourceType} is case-insensitive.
      *
      * @param organization the organization identified by the API key
-     * @return 200 OK with the resources, ordered by identifier
+     * @param id only return the resource with this identifier
+     * @param resourceType only return resources of this type
+     * @param minMemoryGb only return resources with at least this much
+     *                    memory
+     * @param minCores only return CPUs with at least this many cores
+     * @return 200 OK with the matching resources and the usage summary
      */
     @GetMapping
-    public List<ResourceResponse> listResources(
+    public ResourceListResponse listResources(
             @RequestAttribute(ApiKeyAuthInterceptor.ORGANIZATION_ATTRIBUTE)
-            final Organization organization) {
-        return resourceService.listResources(organization);
+            final Organization organization,
+            @RequestParam(name = "id", required = false) final Long id,
+            @RequestParam(name = "resourceType", required = false)
+            final String resourceType,
+            @RequestParam(name = "minMemoryGb", required = false)
+            final Integer minMemoryGb,
+            @RequestParam(name = "minCores", required = false)
+            final Integer minCores) {
+        ResourceFilter filter = new ResourceFilter(id,
+                RequestParams.parseEnum(
+                        ResourceType.class, "resourceType", resourceType),
+                minMemoryGb, minCores);
+        return resourceService.listResources(organization, filter);
     }
     // END AI-generated
 
