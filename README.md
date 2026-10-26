@@ -88,16 +88,17 @@ Each organization sees and uses only its own resources and jobs. Asking for anot
 2. `POST /resources` to register at least one CPU or GPU. Without online resources, jobs stay `QUEUED` with `blockedReason: NO_MATCHING_RESOURCE`.
 3. `POST /jobs` to submit work.
 4. `GET /jobs/{jobId}` or `GET /jobs/queue` to track progress.
-5. `DELETE /jobs/{jobId}` to remove a job once it is no longer running. `PATCH /resources/{resourceId}` to take a resource offline once no job is using it.
+5. `DELETE /jobs/{jobId}` to remove a job once it is no longer running. `PATCH /resources/{resourceId}` to take a resource offline, or `DELETE /resources/{resourceId}` to remove it, once no job is using it.
 
 ### Side Effects and Scheduling
 - **The dispatcher** moves jobs through `QUEUED` → `RUNNING` → `DONE`. It ends running jobs whose lease (`maxDurationHours`) has expired, then starts queued jobs that have enough free online resources and fit within the usage limit.
 - It runs at the start of every `/jobs` request (`POST /jobs`, `GET /jobs/{jobId}`, `DELETE /jobs/{jobId}`, `GET /jobs/queue`), so their responses are always current.
 - It also runs in the background every 30 seconds for each organization with unfinished jobs (set with `dispatcher.interval-ms`).
-- `POST /resources` and `PATCH /resources/{resourceId}` do **not** start queued jobs. A newly added or re-enabled resource is picked up on the next `/jobs` request or background run. When taking a resource offline, `PATCH` first marks jobs whose lease has expired as `DONE`, so a resource whose job just finished can be taken offline.
+- `POST /resources`, `PATCH /resources/{resourceId}`, and `DELETE /resources/{resourceId}` do **not** start queued jobs. A newly added or re-enabled resource is picked up on the next `/jobs` request or background run. When taking a resource offline or deleting it, the server first locks the organization (so no dispatch can assign the resource meanwhile) and marks jobs whose lease has expired as `DONE`, so a resource whose job just finished can be taken offline or deleted.
 - **Usage limits:** `maxCpus`/`maxGpus` cap the units an organization's *running* jobs hold at once. A job asking for more than the limit is rejected with `400`. A job within the limit that would push the running total over it waits in the queue (`blockedReason: EXCEEDS_USAGE_LIMIT`).
 - **Queue order:** queued jobs are tried oldest first, but scheduling is not strict first-come-first-served. If the oldest job can't start, a newer job that fits may start ahead of it.
 - **Deleting a job** also deletes its resource assignments.
+- **Deleting a resource** also deletes its assignments to finished jobs. A resource held by a running job can't be deleted.
 
 ### Example: Correct Usage
 With the app running on `localhost:8080`:
@@ -141,6 +142,8 @@ Continuing from the session above (job 1 is running on resource 1, and `maxCpus`
 | `DELETE /jobs/1` while job 1 is running | `409` "Job 1 is running and cannot be deleted." |
 | `PATCH /resources/1` with `{"online": false}` while job 1 uses it | `409` "Resource 1 is in use by a running job." |
 | `PATCH /resources/999`, a resource that doesn't exist or belongs to another organization | `404` "Resource 999 was not found." |
+| `DELETE /resources/1` while job 1 uses it | `409` "Resource 1 is in use by a running job and cannot be deleted." |
+| `DELETE /resources/999`, a resource that doesn't exist or belongs to another organization | `404` "Resource 999 was not found." |
 
 ## API Endpoints
 
@@ -427,8 +430,27 @@ When the request body fails validation, the response also includes an `errors` l
     - `404 Not Found` -- Returned if there is no resource with an ID associated with the organization.
     - `409 Conflict` -- Returned if attempting to take a resource offline while it is still running a job.
 
+### DELETE /resources/{resourceId}
+- Permanently deletes one of the organization's resources. Deleted resources are no longer considered for new jobs.
+- A resource held by a running job cannot be deleted. The endpoint blocks any new dispatches, marks jobs whose lease has ended as done, and then checks whether a running job still holds the resource.
+- The resource's assignments to finished jobs are removed along with it.
+- Authentication: required
+- Path Parameters:
+    - resourceId (integer, required): The ID of the resource to delete.
+
+- Responses:
+    - `200 OK` -- Resource deleted successfully. Returns the ID of the deleted resource.
+        ```
+        {
+            "deletedResourceId": 1
+        }
+        ```
+    - `404 Not Found` -- The organization has no resource with the given ID.
+    - `409 Conflict` -- The resource is held by a running job and cannot be deleted.
+
 
 ## Deviations from the Proposal
 - **Get Resource Status (`GET /resources`)** does not report current utilization, free time slots, or a `RESERVED` status, and does not take a time window. These depend on reservations of future time, which we did not build: a job either runs as soon as resources are free or waits in the queue. Everything else in the proposal is supported: filters by ID, type, and minimum specs; per-resource status and the job using it; and the organization's usage against its limits.
 - **Update Resource (`PATCH /resources/{resourceId}`)** returns `404 Not Found` for an unknown resource instead of the proposed `400 Bad Request`, to match Delete Job and the usual meaning of the status codes. It also returns `409 Conflict` when taking a resource offline while a running job holds it, which the proposal did not cover, so that a running job never loses its resource.
+- **Delete Resource (`DELETE /resources/{resourceId}`)** refuses only resources held by a running job. The proposal also protected resources "reserved for a future job", but there are no reservations, so that case can't occur.
 - **Testing and tooling:** the proposal listed Testcontainers with PostgreSQL for integration tests, and Docker. Instead, the API tests run the full application against an in-memory H2 database, so the test suite and CI need neither Docker nor a running database. The database schema is still created by the same Flyway migrations. There is no Dockerfile; the app is run with `./mvnw spring-boot:run` against a local PostgreSQL.

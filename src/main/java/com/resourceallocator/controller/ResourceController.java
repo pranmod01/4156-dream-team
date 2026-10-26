@@ -2,6 +2,7 @@ package com.resourceallocator.controller;
 
 import com.resourceallocator.auth.ApiKeyAuthInterceptor;
 import com.resourceallocator.dto.AddResourceRequest;
+import com.resourceallocator.dto.DeleteResourceResponse;
 import com.resourceallocator.dto.ResourceFilter;
 import com.resourceallocator.dto.ResourceListResponse;
 import com.resourceallocator.dto.ResourceResponse;
@@ -12,6 +13,7 @@ import com.resourceallocator.service.ResourceService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,8 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
- * Endpoints for registering resources, viewing their status, and changing
- * their online state.
+ * Endpoints for registering resources, viewing their status, deleting
+ * them, and changing their online state.
  * Every request needs an {@code X-API-Key} header.
  */
 @RestController
@@ -113,6 +115,24 @@ public class ResourceController {
                         ResourceType.class, "resourceType", resourceType),
                 minMemoryGb, minCores);
         return resourceService.listResources(organization, filter);
+    }
+    // END AI-generated
+
+    // BEGIN AI-generated (Claude, Claude Opus 5.5), reviewed by Rob
+    /**
+     * Permanently deletes one of the caller's resources. A resource held
+     * by a running job cannot be deleted.
+     *
+     * @param organization the organization identified by the API key
+     * @param resourceId identifier of the resource to delete
+     * @return 200 OK with the deleted resource's identifier
+     */
+    @DeleteMapping("/{resourceId}")
+    public DeleteResourceResponse deleteResource(
+            @RequestAttribute(ApiKeyAuthInterceptor.ORGANIZATION_ATTRIBUTE)
+            final Organization organization,
+            @PathVariable("resourceId") final Long resourceId) {
+        return resourceService.deleteResource(organization, resourceId);
     }
     // END AI-generated
 }

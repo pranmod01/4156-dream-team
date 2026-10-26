@@ -1,6 +1,7 @@
 package com.resourceallocator.service;
 
 import com.resourceallocator.dto.AddResourceRequest;
+import com.resourceallocator.dto.DeleteResourceResponse;
 import com.resourceallocator.dto.ResourceFilter;
 import com.resourceallocator.dto.ResourceListResponse;
 import com.resourceallocator.dto.ResourceResponse;
@@ -25,8 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Registers resources, reports their status, and changes their online
- * state.
+ * Registers resources, reports their status, deletes them, and changes
+ * their online state.
  */
 @Service
 public class ResourceService {
@@ -206,6 +207,42 @@ public class ResourceService {
                 .count();
         return new ResourceUsage(limit, inUse, Math.max(0, limit - inUse),
                 free);
+    }
+    // END AI-generated
+
+    // BEGIN AI-generated (Claude, Claude Opus 5.5), reviewed by Rob
+    /**
+     * Permanently deletes one of the organization's resources. A resource
+     * held by a running job cannot be deleted. Its assignments to finished
+     * jobs are removed with it (the database cascades them).
+     *
+     * <p>The organization is locked before the resource is looked up, so
+     * no dispatch can assign the resource while the delete runs, and a
+     * second delete of the same resource waits and then gets 404 instead
+     * of failing.
+     *
+     * @param organization the authenticated organization
+     * @param resourceId identifier of the resource to delete
+     * @return confirmation with the deleted resource's identifier
+     * @throws NotFoundException if the organization has no resource with
+     *         that identifier
+     * @throws ConflictException if a running job holds the resource
+     */
+    @Transactional
+    public DeleteResourceResponse deleteResource(
+            final Organization organization, final Long resourceId) {
+        boolean inUse = jobDispatcher.lockAndCheckResourceInUse(
+                organization.getId(), resourceId);
+        Resource resource = resourceRepository
+                .findByIdAndOrganizationId(resourceId, organization.getId())
+                .orElseThrow(() -> new NotFoundException(
+                        "Resource " + resourceId + " was not found."));
+        if (inUse) {
+            throw new ConflictException("Resource " + resourceId
+                    + " is in use by a running job and cannot be deleted.");
+        }
+        resourceRepository.delete(resource);
+        return new DeleteResourceResponse(resourceId);
     }
     // END AI-generated
 
