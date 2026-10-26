@@ -8,6 +8,7 @@ requires. Update it **at the end of every AI session**.
 | Tool | Model(s) | How we got it | Used by | What we used it for |
 |---|---|---|---|---|
 | Claude Code (CLI) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Pranati Modumudi | Codebase orientation, design review, build/CI setup, project docs/scripts, PR review, endpoint implementation and tests |
+| Claude Code (VS Code extension) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Mahsa Mohajeripour | Job endpoint and dispatcher design, implementation and tests |
 
 Add a row for any other tool (ChatGPT, Copilot, Cursor, Gemini, etc.).
 
@@ -36,12 +37,13 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 8,949,157 tokens** (as of 2026-10-26)
+**Grand total, all tools, all members: 15,056,604 tokens** (as of 2026-10-26)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
 | Claude Code | Pranati Modumudi | 218 | 80,050 | 277,834 | 8,591,055 | 8,949,157 |
-| **All** | | **218** | **80,050** | **277,834** | **8,591,055** | **8,949,157** |
+| Claude Code | Mahsa Mohajeripour | 96 | 63,395 | 537,719 | 5,506,237 | 6,107,447 |
+| **All** | | **314** | **143,445** | **815,553** | **14,097,292** | **15,056,604** |
 
 ### How to get your token counts
 
@@ -206,3 +208,57 @@ resources endpoints.
 (2 new), 0 Checkstyle violations. Pending review by Pranati Modumudi.
 **Tokens:** 14 / 6,490 / 31,936 / 365,489 / **403,929** (measured near the
 end of the session; re-run the script at the end to update). 
+
+### 2026-10-19 — Mahsa Mohajeripour — Claude Code / Claude Opus 5.5
+**Session ID:** `c4a5740c-c79d-434b-908c-751f243c929c`
+**Purpose:** Implement my endpoints: add job (#3), get job status (#4), and
+delete job (#5).
+
+**Requests (summary):**
+- Implement the three job endpoints, including the dispatcher that starts
+  queued jobs, with unit and API tests.
+- Add Javadoc notes requested in the PR #20 review.
+
+**What the AI did:**
+- Implemented `POST /jobs`, `GET /jobs/{id}`, and `DELETE /jobs/{id}`, plus
+  a dispatcher that ends expired leases and starts queued jobs on free,
+  matching resources within the usage limit (it runs on every job request
+  and every 30 seconds, and locks the org row so two requests can't take
+  the same resource). Added `NotFoundException` (404).
+- Wrote unit tests (Mockito) and API tests (MockMvc against H2).
+- Added the Javadoc notes from the PR #20 review (merged as PR #21).
+
+**Files generated / modified by AI:**
+- `src/main/java/com/resourceallocator/controller/JobController.java`: new, whole file
+- `src/main/java/com/resourceallocator/service/JobService.java`: new, whole file
+- `src/main/java/com/resourceallocator/service/JobDispatcher.java`: new, whole file
+- `src/main/java/com/resourceallocator/service/JobDispatchScheduler.java`: new, whole file
+- `src/main/java/com/resourceallocator/dto/AddJobRequest.java`: new, whole file
+- `src/main/java/com/resourceallocator/dto/JobResponse.java`: new, whole file
+- `src/main/java/com/resourceallocator/dto/DeleteJobResponse.java`: new, whole file
+- `src/main/java/com/resourceallocator/exception/NotFoundException.java`: new, whole file
+- `src/main/java/com/resourceallocator/repository/JobRepository.java`: five
+  query methods (part)
+- `src/main/java/com/resourceallocator/repository/OrganizationRepository.java`:
+  `findByIdForUpdate` (part)
+- `src/main/java/com/resourceallocator/exception/ApiExceptionHandler.java`:
+  `handleNotFound` (part)
+- `src/main/java/com/resourceallocator/ResourceAllocatorApplication.java`:
+  `@EnableScheduling` (part)
+- `src/test/java/com/resourceallocator/controller/JobApiTest.java`: new, whole file
+- `src/test/java/com/resourceallocator/service/JobServiceTest.java`: new, whole file
+- `src/test/java/com/resourceallocator/service/JobDispatcherTest.java`: new, whole file
+- `src/test/java/com/resourceallocator/service/JobDispatchSchedulerTest.java`:
+  new, whole file
+- PR #21: Javadoc paragraphs in `JobDispatcher` and `JobService.deleteJob`
+
+**How we used/checked the output:** Ran `./mvnw verify`: 91/91 tests pass
+(44 new), 0 Checkstyle and PMD violations, 100% line coverage on the new
+classes. Opened PR #20, which CI passed and 2D-Cone reviewed and approved
+before I merged it. The review's documentation suggestions went into PR #21.
+**Tokens:** 96 / 63,395 / 537,719 / 5,506,237 / **6,107,447** (whole
+session, 2026-10-19 to 2026-10-26, measured near the end. The session was
+started from the parent folder `~/Projects/dream-team`, so
+`./scripts/ai-token-usage.sh` doesn't find it; these counts use the
+script's formula on that folder's session log.)
+
