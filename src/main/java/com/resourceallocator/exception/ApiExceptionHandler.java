@@ -51,6 +51,18 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT, ex.getMessage());
     }
+
+    /**
+     * Maps a reference to a missing entity to 404 Not Found.
+     *
+     * @param ex the exception
+     * @return the problem detail
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ProblemDetail handleNotFound(final NotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, ex.getMessage());
+    }
     // END AI-generated
 
     /**
