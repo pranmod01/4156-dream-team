@@ -49,6 +49,8 @@ public class ClientService {
     @Transactional
     public CreateClientResponse createClient(
             final CreateClientRequest request) {
+        // The 255-character limit was already checked on the untrimmed
+        // name (see CreateClientRequest).
         String orgName = request.orgName().trim();
         if (organizationRepository.existsByOrgName(orgName)) {
             throw duplicateName(orgName);
