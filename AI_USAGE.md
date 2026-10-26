@@ -8,6 +8,7 @@ requires. Update it **at the end of every AI session**.
 | Tool | Model(s) | How we got it | Used by | What we used it for |
 |---|---|---|---|---|
 | Claude Code (CLI) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Pranati Modumudi | Codebase orientation, design review, build/CI setup, project docs/scripts, PR review, endpoint implementation and tests |
+| Claude Code (VS Code extension) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Mahsa Mohajeripour | Job endpoint and dispatcher design, implementation and tests |
 
 Add a row for any other tool (ChatGPT, Copilot, Cursor, Gemini, etc.).
 
@@ -36,12 +37,13 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 21,766,675 tokens** (as of 2026-10-26)
+**Grand total, all tools, all members: 32,308,840 tokens** (as of 2026-10-26)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
 | Claude Code | Pranati Modumudi | 446 | 169,259 | 435,454 | 21,161,516 | 21,766,675 |
-| **All** | | **446** | **169,259** | **435,454** | **21,161,516** | **21,766,675** |
+| Claude Code | Mahsa Mohajeripour | 138 | 82,749 | 584,120 | 9,875,158 | 10,542,165 |
+| **All** | | **584** | **252,008** | **1,019,574** | **31,036,674** | **32,308,840** |
 
 ### How to get your token counts
 
@@ -270,3 +272,64 @@ approved by Pranati Modumudi before it was made. Ran `./mvnw clean verify`:
 coverage.
 **Tokens:** 198 / 82,925 / 148,833 / 11,507,622 / **11,739,578** (measured just
 before committing; this session continued afterwards).
+
+### 2026-10-19 — Mahsa Mohajeripour — Claude Code / Claude Opus 5.5
+**Session ID:** `c4a5740c-c79d-434b-908c-751f243c929c`
+**Purpose:** Implement my endpoints: add job (#3), get job status (#4), and
+delete job (#5).
+
+**Requests (summary):**
+- Implement the three job endpoints, including the dispatcher that starts
+  queued jobs, with unit and API tests.
+- Add Javadoc notes requested in the PR #20 review.
+- Return 404 instead of 400 for a missing job in `GET /jobs/{jobId}`, to
+  match the other endpoints, and update the tests and README.
+
+**What the AI did:**
+- Implemented `POST /jobs`, `GET /jobs/{id}`, and `DELETE /jobs/{id}`, plus
+  a dispatcher that ends expired leases and starts queued jobs on free,
+  matching resources within the usage limit (it runs on every job request
+  and every 30 seconds, and locks the org row so two requests can't take
+  the same resource). Added `NotFoundException` (404).
+- Wrote unit tests (Mockito) and API tests (MockMvc against H2).
+- Added the Javadoc notes from the PR #20 review (merged as PR #21).
+- Changed `GET /jobs/{jobId}` to return 404 for a missing job and updated
+  the tests and README.
+
+**Files generated / modified by AI:**
+- `src/main/java/com/resourceallocator/controller/JobController.java`: new, whole file
+- `src/main/java/com/resourceallocator/service/JobService.java`: new, whole file
+- `src/main/java/com/resourceallocator/service/JobDispatcher.java`: new, whole file
+- `src/main/java/com/resourceallocator/service/JobDispatchScheduler.java`: new, whole file
+- `src/main/java/com/resourceallocator/dto/AddJobRequest.java`: new, whole file
+- `src/main/java/com/resourceallocator/dto/JobResponse.java`: new, whole file
+- `src/main/java/com/resourceallocator/dto/DeleteJobResponse.java`: new, whole file
+- `src/main/java/com/resourceallocator/exception/NotFoundException.java`: new, whole file
+- `src/main/java/com/resourceallocator/repository/JobRepository.java`: five
+  query methods (part)
+- `src/main/java/com/resourceallocator/repository/OrganizationRepository.java`:
+  `findByIdForUpdate` (part)
+- `src/main/java/com/resourceallocator/exception/ApiExceptionHandler.java`:
+  `handleNotFound` (part)
+- `src/main/java/com/resourceallocator/ResourceAllocatorApplication.java`:
+  `@EnableScheduling` (part)
+- `src/test/java/com/resourceallocator/controller/JobApiTest.java`: new, whole file
+- `src/test/java/com/resourceallocator/service/JobServiceTest.java`: new, whole file
+- `src/test/java/com/resourceallocator/service/JobDispatcherTest.java`: new, whole file
+- `src/test/java/com/resourceallocator/service/JobDispatchSchedulerTest.java`:
+  new, whole file
+- PR #21: Javadoc paragraphs in `JobDispatcher` and `JobService.deleteJob`
+- `JobService.getJobStatus`: 404 for a missing job (part); matching updates
+  to `JobServiceTest`, `JobApiTest`, and the `GET /jobs/{jobId}` section of
+  `README.md`
+
+**How we used/checked the output:** Ran `./mvnw verify`: 91/91 tests pass
+(44 new), 0 Checkstyle and PMD violations, 100% line coverage on the new
+classes. Opened PR #20, which CI passed and 2D-Cone reviewed and approved
+before I merged it. The review's documentation suggestions went into PR #21.
+After the 404 change, `./mvnw verify` passes with 105/105 tests.
+**Tokens:** 138 / 82,749 / 584,120 / 9,875,158 / **10,542,165** (whole
+session, 2026-10-19 to 2026-10-26, measured near the end. The session was
+started from the parent folder `~/Projects/dream-team`, so
+`./scripts/ai-token-usage.sh` doesn't find it; these counts use the
+script's formula on that folder's session log.)
