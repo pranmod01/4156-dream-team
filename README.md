@@ -228,29 +228,50 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
 
 
 ### GET /resources
-- Lists all of the organization's resources, ordered by ID, along with whether each is online.
+- Lists the organization's resources with their current status, and summarizes the organization's usage against its limits.
+- Before responding, the server runs the dispatcher (ending expired leases and starting queued jobs that can now run), so statuses are up to date.
 - Authentication: required
+- Query Parameters (all optional):
+    - id (integer): Only return the resource with this ID.
+    - resourceType (string): Only return resources of this type. One of `CPU`, `GPU` (case-insensitive).
+    - minMemoryGb (integer): Only return resources with at least this much memory. Must be positive.
+    - minCores (integer): Only return CPUs with at least this many cores. Must be positive. GPUs have no cores, so this excludes every GPU.
+- Example Request: `GET /resources?resourceType=gpu&minMemoryGb=64`
 
 - Responses:
-    - `200 OK` -- Returns a list of the organization's resources.
+    - `200 OK` -- Returns the matching resources, ordered by ID, and a usage summary.
         ```
-        [
-            {
-                "id": 1,
-                "resourceType": "CPU",
-                "memoryGb": 64,
-                "cores": 8,
-                "online": true
-            },
-            {
-                "id": 2,
-                "resourceType": "GPU",
-                "memoryGb": 80,
-                "cores": null,
-                "online": false
+        {
+            "resources": [
+                {
+                    "id": 1,
+                    "resourceType": "CPU",
+                    "memoryGb": 64,
+                    "cores": 8,
+                    "online": true,
+                    "status": "IN_USE",
+                    "runningJobId": 3
+                },
+                {
+                    "id": 2,
+                    "resourceType": "GPU",
+                    "memoryGb": 80,
+                    "cores": null,
+                    "online": false,
+                    "status": "OFFLINE",
+                    "runningJobId": null
+                }
+            ],
+            "summary": {
+                "cpu": { "limit": 4, "inUse": 1, "remaining": 3, "freeResources": 0 },
+                "gpu": { "limit": 1, "inUse": 0, "remaining": 1, "freeResources": 0 }
             }
-        ]
+        }
         ```
+        - `status` is `AVAILABLE` (online and not used by a job), `IN_USE` (held by the running job `runningJobId`), or `OFFLINE`.
+        - `summary` always covers all of the organization's resources, whichever filters are applied. For each type, `limit` is the organization's usage limit, `inUse` is the units held by running jobs, `remaining` is how many more units the organization may start (`limit - inUse`, never negative), and `freeResources` is how many online resources no job is using. `remaining` can be smaller than `freeResources` when the usage limit, not the hardware, is the constraint.
+    - `400 Bad Request` -- Also returned if `resourceType` is not recognized, or `minMemoryGb` or `minCores` is not positive.
+    - `404 Not Found` -- `id` was given, but the organization has no resource with that ID.
 
 
 ### PATCH /resources/{resourceId}
@@ -280,3 +301,9 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
         ```
     - `404 Not Found` -- Returned if there is no resource with an ID associated with the organization.
     - `409 Conflict` -- Returned if attempting to take a resource offline while it is still running a job.
+
+
+## Deviations from the Proposal
+- **Get Resource Status (`GET /resources`)** does not report current utilization, free time slots, or a `RESERVED` status, and does not take a time window. These depend on reservations of future time, which we did not build: a job either runs as soon as resources are free or waits in the queue. Everything else in the proposal is supported: filters by ID, type, and minimum specs; per-resource status and the job using it; and the organization's usage against its limits.
+- **Update Resource (`PATCH /resources/{resourceId}`)** returns `404 Not Found` for an unknown resource instead of the proposed `400 Bad Request`, to match Delete Job and the usual meaning of the status codes. It also returns `409 Conflict` when taking a resource offline while a running job holds it, which the proposal did not cover, so that a running job never loses its resource.
+- **Testing and tooling:** the proposal listed Testcontainers with PostgreSQL for integration tests, and Docker. Instead, the API tests run the full application against an in-memory H2 database, so the test suite and CI need neither Docker nor a running database. The database schema is still created by the same Flyway migrations. There is no Dockerfile; the app is run with `./mvnw spring-boot:run` against a local PostgreSQL.

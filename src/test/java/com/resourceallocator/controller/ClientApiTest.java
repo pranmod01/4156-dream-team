@@ -77,7 +77,7 @@ class ClientApiTest {
         mockMvc.perform(get("/resources")
                         .header(ApiKeyAuthInterceptor.API_KEY_HEADER, apiKey))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.resources", hasSize(0)));
     }
 
     @Test
