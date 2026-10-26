@@ -37,13 +37,13 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 15,056,604 tokens** (as of 2026-10-26)
+**Grand total, all tools, all members: 17,049,855 tokens** (as of 2026-10-26)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
 | Claude Code | Pranati Modumudi | 218 | 80,050 | 277,834 | 8,591,055 | 8,949,157 |
-| Claude Code | Mahsa Mohajeripour | 96 | 63,395 | 537,719 | 5,506,237 | 6,107,447 |
-| **All** | | **314** | **143,445** | **815,553** | **14,097,292** | **15,056,604** |
+| Claude Code | Mahsa Mohajeripour | 116 | 73,073 | 556,436 | 7,471,073 | 8,100,698 |
+| **All** | | **334** | **153,123** | **834,270** | **16,062,128** | **17,049,855** |
 
 ### How to get your token counts
 
@@ -218,6 +218,8 @@ delete job (#5).
 - Implement the three job endpoints, including the dispatcher that starts
   queued jobs, with unit and API tests.
 - Add Javadoc notes requested in the PR #20 review.
+- Return 404 instead of 400 for a missing job in `GET /jobs/{jobId}`, to
+  match the other endpoints, and update the tests and README.
 
 **What the AI did:**
 - Implemented `POST /jobs`, `GET /jobs/{id}`, and `DELETE /jobs/{id}`, plus
@@ -227,6 +229,8 @@ delete job (#5).
   the same resource). Added `NotFoundException` (404).
 - Wrote unit tests (Mockito) and API tests (MockMvc against H2).
 - Added the Javadoc notes from the PR #20 review (merged as PR #21).
+- Changed `GET /jobs/{jobId}` to return 404 for a missing job and updated
+  the tests and README.
 
 **Files generated / modified by AI:**
 - `src/main/java/com/resourceallocator/controller/JobController.java`: new, whole file
@@ -251,12 +255,16 @@ delete job (#5).
 - `src/test/java/com/resourceallocator/service/JobDispatchSchedulerTest.java`:
   new, whole file
 - PR #21: Javadoc paragraphs in `JobDispatcher` and `JobService.deleteJob`
+- `JobService.getJobStatus`: 404 for a missing job (part); matching updates
+  to `JobServiceTest`, `JobApiTest`, and the `GET /jobs/{jobId}` section of
+  `README.md`
 
 **How we used/checked the output:** Ran `./mvnw verify`: 91/91 tests pass
 (44 new), 0 Checkstyle and PMD violations, 100% line coverage on the new
 classes. Opened PR #20, which CI passed and 2D-Cone reviewed and approved
 before I merged it. The review's documentation suggestions went into PR #21.
-**Tokens:** 96 / 63,395 / 537,719 / 5,506,237 / **6,107,447** (whole
+After the 404 change, `./mvnw verify` passes with 105/105 tests.
+**Tokens:** 116 / 73,073 / 556,436 / 7,471,073 / **8,100,698** (whole
 session, 2026-10-19 to 2026-10-26, measured near the end. The session was
 started from the parent folder `~/Projects/dream-team`, so
 `./scripts/ai-token-usage.sh` doesn't find it; these counts use the
