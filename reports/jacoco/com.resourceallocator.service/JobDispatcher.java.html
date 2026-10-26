@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JobDispatcher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.service</a> &gt; <span class="el_source">JobDispatcher.java</span></div><h1>JobDispatcher.java</h1><pre class="source lang-java linenums">package com.resourceallocator.service;
+// AI-generated (Claude Code, Claude Opus 5.5)
+
+import com.resourceallocator.model.Job;
+import com.resourceallocator.model.JobStatus;
+import com.resourceallocator.model.Organization;
+import com.resourceallocator.model.Resource;
+import com.resourceallocator.model.ResourceType;
+import com.resourceallocator.repository.JobRepository;
+import com.resourceallocator.repository.OrganizationRepository;
+import com.resourceallocator.repository.ResourceRepository;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Moves an organization's jobs through their lifecycle: finishes running
+ * jobs whose lease has ended, then starts queued jobs whose resources are
+ * free.
+ *
+ * &lt;p&gt;Queued jobs are considered oldest first. A job starts only if
+ * enough free online resources meet its requirements and the units it
+ * needs, added to the units held by running jobs of the same type, stay
+ * within the organization's usage limit. A job that cannot start stays
+ * queued, and later jobs may still start ahead of it.
+ *
+ * &lt;p&gt;This keeps resources busy but is not strict first-come,
+ * first-served: a large job can wait indefinitely if smaller jobs keep
+ * arriving and taking the resources it needs.
+ */
+@Service
+public class JobDispatcher {
+
+    /** Reads and updates jobs and their resource assignments. */
+    private final JobRepository jobRepository;
+
+    /** Reads the organization's resources. */
+    private final ResourceRepository resourceRepository;
+
+    /** Reads and locks organizations. */
+    private final OrganizationRepository organizationRepository;
+
+    /**
+     * Creates the dispatcher.
+     *
+     * @param jobRepository repository used to read and update jobs
+     * @param resourceRepository repository used to read resources
+     * @param organizationRepository repository used to lock organizations
+     */
+    public JobDispatcher(final JobRepository jobRepository,
+            final ResourceRepository resourceRepository,
+<span class="fc" id="L62">            final OrganizationRepository organizationRepository) {</span>
+<span class="fc" id="L63">        this.jobRepository = jobRepository;</span>
+<span class="fc" id="L64">        this.resourceRepository = resourceRepository;</span>
+<span class="fc" id="L65">        this.organizationRepository = organizationRepository;</span>
+<span class="fc" id="L66">    }</span>
+
+    /**
+     * Dispatches the organization's jobs as of the current time.
+     *
+     * @param organizationId the organization whose jobs to dispatch
+     */
+    @Transactional
+    public void dispatch(final Long organizationId) {
+<span class="fc" id="L75">        dispatch(organizationId, Instant.now());</span>
+<span class="fc" id="L76">    }</span>
+
+    /**
+     * Dispatches the organization's jobs as of the given time. The
+     * organization's row stays locked until the transaction ends, so
+     * concurrent runs for one organization cannot assign a resource
+     * twice.
+     *
+     * @param organizationId the organization whose jobs to dispatch
+     * @param now the time to treat as the present
+     */
+    @Transactional
+    public void dispatch(final Long organizationId, final Instant now) {
+        // Serializes dispatches per organization: findByIdForUpdate holds a
+        // pessimistic lock on the organization row until the transaction
+        // commits.
+<span class="fc" id="L92">        Optional&lt;Organization&gt; organization =</span>
+<span class="fc" id="L93">                organizationRepository.findByIdForUpdate(organizationId);</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        if (organization.isEmpty()) {</span>
+<span class="fc" id="L95">            return;</span>
+        }
+        // Release finished jobs to update available resources
+<span class="fc" id="L98">        Map&lt;ResourceType, Integer&gt; unitsInUse =</span>
+<span class="fc" id="L99">                finishExpiredLeases(organizationId, now);</span>
+<span class="fc" id="L100">        Set&lt;Long&gt; busyResourceIds = new HashSet&lt;&gt;(jobRepository</span>
+<span class="fc" id="L101">                .findResourceIdsHeldByRunningJobs(organizationId));</span>
+<span class="fc" id="L102">        List&lt;Resource&gt; onlineResources = new ArrayList&lt;&gt;(resourceRepository</span>
+<span class="fc" id="L103">                .findByOrganizationIdAndOnlineTrue(organizationId));</span>
+<span class="fc" id="L104">        onlineResources.sort(Comparator.comparing(Resource::getId));</span>
+
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        for (Job job : jobRepository</span>
+<span class="fc" id="L107">                .findByOrganizationIdAndStatusOrderBySubmittedAtAscIdAsc(</span>
+                        organizationId, JobStatus.QUEUED)) {
+            // Skip jobs that would exceed usage limit
+<span class="fc" id="L110">            int used = unitsInUse.getOrDefault(job.getResourceType(), 0);</span>
+<span class="fc" id="L111">            if (used + job.getUnitsRequested()</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">                    &gt; usageLimit(organization.get(), job.getResourceType())) {</span>
+<span class="fc" id="L113">                continue;</span>
+            }
+            // Get list of suitable units for this job, try to assign them
+<span class="fc" id="L116">            List&lt;Resource&gt; assigned = onlineResources.stream()</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">                    .filter(resource -&gt; !busyResourceIds.contains(</span>
+<span class="fc" id="L118">                            resource.getId()))</span>
+<span class="fc" id="L119">                    .filter(resource -&gt; satisfies(resource, job))</span>
+<span class="fc" id="L120">                    .limit(job.getUnitsRequested())</span>
+<span class="fc" id="L121">                    .toList();</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">            if (assigned.size() &lt; job.getUnitsRequested()) {</span>
+<span class="fc" id="L123">                continue;</span>
+            }
+<span class="fc bfc" id="L125" title="All 2 branches covered.">            for (Resource resource : assigned) {</span>
+                // Assignment is only flushed at end of transaction
+                // Reads can be stale, organization lock
+<span class="fc" id="L128">                jobRepository.assignResource(job.getId(), resource.getId());</span>
+<span class="fc" id="L129">                busyResourceIds.add(resource.getId());</span>
+<span class="fc" id="L130">            }</span>
+            // Updates job status. Doesn't flush until after transaction
+<span class="fc" id="L132">            job.setStatus(JobStatus.RUNNING);</span>
+<span class="fc" id="L133">            job.setStartedAt(now);</span>
+<span class="fc" id="L134">            job.setLeaseEnd(now.plus(</span>
+<span class="fc" id="L135">                    Duration.ofHours(job.getMaxDurationHours())));</span>
+<span class="fc" id="L136">            unitsInUse.merge(job.getResourceType(), job.getUnitsRequested(),</span>
+                    Integer::sum);
+<span class="fc" id="L138">        }</span>
+<span class="fc" id="L139">    }</span>
+
+    /**
+     * Locks the organization, finishes expired leases, and reports whether
+     * a running job holds the resource. Must run inside the caller's
+     * transaction, so the lock is held until the caller commits and no
+     * dispatch can assign the resource before then.
+     *
+     * @param organizationId the organization that owns the resource
+     * @param resourceId the resource to check
+     * @return whether a running job holds the resource
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean lockAndCheckResourceInUse(final Long organizationId,
+            final Long resourceId) {
+        // Holds lock on organization, preventing other dispatches
+<span class="fc" id="L155">        organizationRepository.findByIdForUpdate(organizationId);</span>
+<span class="fc" id="L156">        finishExpiredLeases(organizationId, Instant.now());</span>
+<span class="fc" id="L157">        return jobRepository.findResourceIdsHeldByRunningJobs(organizationId)</span>
+<span class="fc" id="L158">                .contains(resourceId);</span>
+    }
+
+    // Marks running jobs whose lease has ended as done, and returns the
+    // units still held by the remaining running jobs, per resource type.
+    private Map&lt;ResourceType, Integer&gt; finishExpiredLeases(
+            final Long organizationId, final Instant now) {
+<span class="fc" id="L165">        Map&lt;ResourceType, Integer&gt; unitsInUse =</span>
+                new EnumMap&lt;&gt;(ResourceType.class);
+<span class="fc bfc" id="L167" title="All 2 branches covered.">        for (Job job : jobRepository</span>
+<span class="fc" id="L168">                .findByOrganizationIdAndStatusOrderBySubmittedAtAscIdAsc(</span>
+                        organizationId, JobStatus.RUNNING)) {
+<span class="pc bpc" id="L170" title="1 of 4 branches missed.">            if (job.getLeaseEnd() != null &amp;&amp; !job.getLeaseEnd().isAfter(now)) {</span>
+<span class="fc" id="L171">                job.setStatus(JobStatus.DONE);</span>
+            } else {
+<span class="fc" id="L173">                unitsInUse.merge(job.getResourceType(),</span>
+<span class="fc" id="L174">                        job.getUnitsRequested(), Integer::sum);</span>
+            }
+<span class="fc" id="L176">        }</span>
+        // Write the finished jobs out so the busy-resource query, which
+        // reads the database directly, no longer counts them.
+<span class="fc" id="L179">        jobRepository.flush();</span>
+<span class="fc" id="L180">        return unitsInUse;</span>
+    }
+
+    // Whether a resource meets a job's type, memory and core requirements.
+    private static boolean satisfies(final Resource resource, final Job job) {
+<span class="fc bfc" id="L185" title="All 2 branches covered.">        if (resource.getResourceType() != job.getResourceType()</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">                || resource.getMemoryGb() &lt; job.getMinMemoryGb()) {</span>
+<span class="fc" id="L187">            return false;</span>
+        }
+<span class="fc bfc" id="L189" title="All 2 branches covered.">        return job.getMinCores() == null</span>
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">                || resource.getCores() != null</span>
+<span class="fc bfc" id="L191" title="All 2 branches covered.">                        &amp;&amp; resource.getCores() &gt;= job.getMinCores();</span>
+    }
+
+    private static int usageLimit(final Organization organization,
+            final ResourceType type) {
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        return type == ResourceType.GPU</span>
+<span class="fc" id="L197">                ? organization.getMaxGpus() : organization.getMaxCpus();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

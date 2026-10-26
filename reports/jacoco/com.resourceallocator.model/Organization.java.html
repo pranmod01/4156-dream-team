@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Organization.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.model</a> &gt; <span class="el_source">Organization.java</span></div><h1>Organization.java</h1><pre class="source lang-java linenums">package com.resourceallocator.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+
+/**
+ * A client organization, its hashed API key, and its usage limits.
+ */
+@Entity
+@Table(name = &quot;organization&quot;)
+public class Organization {
+
+    /** Database-generated identifier. */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /** Unique display name of the organization. */
+    @Column(name = &quot;org_name&quot;, nullable = false, unique = true)
+    private String orgName;
+
+    /** SHA-256 hex digest of the organization's API key. */
+    @Column(name = &quot;api_key_hash&quot;, nullable = false, unique = true,
+            length = 64)
+    private String apiKeyHash;
+
+    /** Maximum number of CPU units the organization may use at once. */
+    @Column(name = &quot;max_cpus&quot;, nullable = false)
+    private int maxCpus;
+
+    /** Maximum number of GPU units the organization may use at once. */
+    @Column(name = &quot;max_gpus&quot;, nullable = false)
+    private int maxGpus;
+
+    /** When the organization was registered. */
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private Instant createdAt;
+
+    /**
+     * Creates an empty organization. Required by JPA.
+     */
+<span class="fc" id="L47">    protected Organization() {</span>
+        // Required by JPA.
+<span class="fc" id="L49">    }</span>
+
+    /**
+     * Creates a new organization registered at the current time.
+     *
+     * @param orgName unique organization name
+     * @param apiKeyHash SHA-256 hex digest of the organization's API key
+     * @param maxCpus maximum CPU units the organization may use at once
+     * @param maxGpus maximum GPU units the organization may use at once
+     */
+    public Organization(final String orgName, final String apiKeyHash,
+<span class="fc" id="L60">            final int maxCpus, final int maxGpus) {</span>
+<span class="fc" id="L61">        this.orgName = orgName;</span>
+<span class="fc" id="L62">        this.apiKeyHash = apiKeyHash;</span>
+<span class="fc" id="L63">        this.maxCpus = maxCpus;</span>
+<span class="fc" id="L64">        this.maxGpus = maxGpus;</span>
+<span class="fc" id="L65">        this.createdAt = Instant.now();</span>
+<span class="fc" id="L66">    }</span>
+
+    /**
+     * Returns the organization's identifier.
+     *
+     * @return the identifier, or {@code null} if not yet persisted
+     */
+    public Long getId() {
+<span class="fc" id="L74">        return id;</span>
+    }
+
+    /**
+     * Returns the organization's name.
+     *
+     * @return the organization name
+     */
+    public String getOrgName() {
+<span class="fc" id="L83">        return orgName;</span>
+    }
+
+    /**
+     * Returns the SHA-256 hex digest of the organization's API key.
+     *
+     * @return the API key hash
+     */
+    public String getApiKeyHash() {
+<span class="fc" id="L92">        return apiKeyHash;</span>
+    }
+
+    /**
+     * Returns the maximum number of CPU units usable at once.
+     *
+     * @return the CPU limit
+     */
+    public int getMaxCpus() {
+<span class="fc" id="L101">        return maxCpus;</span>
+    }
+
+    /**
+     * Returns the maximum number of GPU units usable at once.
+     *
+     * @return the GPU limit
+     */
+    public int getMaxGpus() {
+<span class="fc" id="L110">        return maxGpus;</span>
+    }
+
+    /**
+     * Returns when the organization was registered.
+     *
+     * @return the registration time
+     */
+    public Instant getCreatedAt() {
+<span class="fc" id="L119">        return createdAt;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

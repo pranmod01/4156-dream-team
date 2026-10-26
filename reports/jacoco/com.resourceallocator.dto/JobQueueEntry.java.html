@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JobQueueEntry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.dto</a> &gt; <span class="el_source">JobQueueEntry.java</span></div><h1>JobQueueEntry.java</h1><pre class="source lang-java linenums">package com.resourceallocator.dto;
+
+import com.resourceallocator.model.JobStatus;
+import java.time.Instant;
+
+/**
+ * One job in a job queue response.
+ *
+ * @param jobId the job identifier
+ * @param status the job's current state
+ * @param requiredResources the resources the job needs
+ * @param submittedAt when the job was submitted
+ * @param startedAt when the job started, or {@code null} if it has not
+ * @param leaseEnd when the job's lease ends, or {@code null} if it has
+ *                 not started
+ * @param queuePosition 1-based position among the organization's queued
+ *                      jobs, or {@code null} if the job is not queued
+ * @param blocked whether the job cannot currently be scheduled
+ * @param blockedReason why the job is blocked, or {@code null} if it
+ *                      is not
+ */
+<span class="fc" id="L22">public record JobQueueEntry(</span>
+        Long jobId,
+        JobStatus status,
+        RequiredResources requiredResources,
+        Instant submittedAt,
+        Instant startedAt,
+        Instant leaseEnd,
+        Integer queuePosition,
+        boolean blocked,
+        BlockedReason blockedReason) {
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

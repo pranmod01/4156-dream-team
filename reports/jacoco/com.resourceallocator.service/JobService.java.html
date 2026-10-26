@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JobService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.service</a> &gt; <span class="el_source">JobService.java</span></div><h1>JobService.java</h1><pre class="source lang-java linenums">package com.resourceallocator.service;
+// AI-generated (Claude Code, Claude Opus 5.5)
+
+import com.resourceallocator.dto.AddJobRequest;
+import com.resourceallocator.dto.DeleteJobResponse;
+import com.resourceallocator.dto.JobResponse;
+import com.resourceallocator.exception.ConflictException;
+import com.resourceallocator.exception.InvalidRequestException;
+import com.resourceallocator.exception.NotFoundException;
+import com.resourceallocator.model.Job;
+import com.resourceallocator.model.JobStatus;
+import com.resourceallocator.model.Organization;
+import com.resourceallocator.model.ResourceType;
+import com.resourceallocator.repository.JobRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Submits, looks up, and deletes jobs. Each operation first runs the
+ * {@link JobDispatcher} so the job states it sees and returns are
+ * current.
+ */
+@Service
+public class JobService {
+
+    /** Persists jobs. */
+    private final JobRepository jobRepository;
+
+    /** Starts queued jobs and finishes expired ones. */
+    private final JobDispatcher jobDispatcher;
+
+    /**
+     * Creates the service.
+     *
+     * @param jobRepository repository used to persist jobs
+     * @param jobDispatcher dispatcher that updates job states
+     */
+    public JobService(final JobRepository jobRepository,
+<span class="fc" id="L39">            final JobDispatcher jobDispatcher) {</span>
+<span class="fc" id="L40">        this.jobRepository = jobRepository;</span>
+<span class="fc" id="L41">        this.jobDispatcher = jobDispatcher;</span>
+<span class="fc" id="L42">    }</span>
+
+    /**
+     * Queues a new job for the organization and starts it at once if its
+     * resources are free.
+     *
+     * &lt;p&gt;A request is rejected only if it could never run: a CPU job
+     * without a core count, a GPU job with one, or more units than the
+     * organization's limit for that type. A job that fits the limit but
+     * cannot start yet stays queued.
+     *
+     * @param organization the authenticated organization
+     * @param request the job to submit
+     * @return the job, queued or running
+     * @throws InvalidRequestException if the request breaks one of the
+     *         rules above
+     */
+    @Transactional
+    public JobResponse addJob(final Organization organization,
+            final AddJobRequest request) {
+<span class="fc" id="L62">        validateCores(request.resourceType(), request.minCores());</span>
+<span class="fc" id="L63">        int limit = usageLimit(organization, request.resourceType());</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (request.unitsRequested() &gt; limit) {</span>
+<span class="fc" id="L65">            throw new InvalidRequestException(&quot;unitsRequested exceeds the &quot;</span>
+<span class="fc" id="L66">                    + &quot;organization's &quot; + request.resourceType()</span>
+                    + &quot; limit of &quot; + limit + &quot;.&quot;);
+        }
+<span class="fc" id="L69">        Job job = jobRepository.saveAndFlush(new Job(</span>
+<span class="fc" id="L70">                organization.getId(),</span>
+<span class="fc" id="L71">                request.resourceType(),</span>
+<span class="fc" id="L72">                request.unitsRequested(),</span>
+<span class="fc" id="L73">                request.minMemoryGb(),</span>
+<span class="fc" id="L74">                request.minCores(),</span>
+<span class="fc" id="L75">                request.maxDurationHours()));</span>
+<span class="fc" id="L76">        jobDispatcher.dispatch(organization.getId());</span>
+<span class="fc" id="L77">        return toResponse(job);</span>
+    }
+
+    /**
+     * Returns one of the organization's jobs and its current status.
+     *
+     * @param organization the authenticated organization
+     * @param jobId identifier of the job
+     * @return the job
+     * @throws InvalidRequestException if the organization has no job with
+     *         that identifier
+     */
+    @Transactional
+    public JobResponse getJobStatus(final Organization organization,
+            final Long jobId) {
+<span class="fc" id="L92">        jobDispatcher.dispatch(organization.getId());</span>
+<span class="fc" id="L93">        Job job = jobRepository</span>
+<span class="fc" id="L94">                .findByIdAndOrganizationId(jobId, organization.getId())</span>
+<span class="fc" id="L95">                .orElseThrow(() -&gt; new InvalidRequestException(</span>
+                        &quot;Job &quot; + jobId + &quot; was not found.&quot;));
+<span class="fc" id="L97">        return toResponse(job);</span>
+    }
+
+    /**
+     * Permanently deletes one of the organization's jobs that is not
+     * running. Any resource assignments of the job are deleted with it.
+     *
+     * &lt;p&gt;The dispatcher runs first, so a job that was queued can start
+     * during this call; it is then running and the delete is refused.
+     *
+     * @param organization the authenticated organization
+     * @param jobId identifier of the job
+     * @return confirmation naming the deleted job
+     * @throws NotFoundException if the organization has no job with that
+     *         identifier
+     * @throws ConflictException if the job is running
+     */
+    @Transactional
+    public DeleteJobResponse deleteJob(final Organization organization,
+            final Long jobId) {
+<span class="fc" id="L117">        jobDispatcher.dispatch(organization.getId());</span>
+<span class="fc" id="L118">        Job job = jobRepository</span>
+<span class="fc" id="L119">                .findByIdAndOrganizationId(jobId, organization.getId())</span>
+<span class="fc" id="L120">                .orElseThrow(() -&gt; new NotFoundException(</span>
+                        &quot;Job &quot; + jobId + &quot; was not found.&quot;));
+<span class="fc bfc" id="L122" title="All 2 branches covered.">        if (job.getStatus() == JobStatus.RUNNING) {</span>
+<span class="fc" id="L123">            throw new ConflictException(</span>
+                    &quot;Job &quot; + jobId + &quot; is running and cannot be deleted.&quot;);
+        }
+<span class="fc" id="L126">        jobRepository.delete(job);</span>
+<span class="fc" id="L127">        return new DeleteJobResponse(jobId);</span>
+    }
+
+    private JobResponse toResponse(final Job job) {
+<span class="fc" id="L131">        return JobResponse.from(job,</span>
+<span class="fc" id="L132">                jobRepository.findResourceIdsByJobId(job.getId()));</span>
+    }
+
+    private static void validateCores(final ResourceType type,
+            final Integer minCores) {
+<span class="fc bfc" id="L137" title="All 4 branches covered.">        if (type == ResourceType.CPU &amp;&amp; minCores == null) {</span>
+<span class="fc" id="L138">            throw new InvalidRequestException(</span>
+                    &quot;minCores is required for CPU jobs.&quot;);
+        }
+<span class="fc bfc" id="L141" title="All 4 branches covered.">        if (type == ResourceType.GPU &amp;&amp; minCores != null) {</span>
+<span class="fc" id="L142">            throw new InvalidRequestException(</span>
+                    &quot;minCores must not be set for GPU jobs.&quot;);
+        }
+<span class="fc" id="L145">    }</span>
+
+    private static int usageLimit(final Organization organization,
+            final ResourceType type) {
+<span class="fc bfc" id="L149" title="All 2 branches covered.">        return type == ResourceType.GPU</span>
+<span class="fc" id="L150">                ? organization.getMaxGpus() : organization.getMaxCpus();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
