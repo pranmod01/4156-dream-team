@@ -9,6 +9,7 @@ requires. Update it **at the end of every AI session**.
 |---|---|---|---|---|
 | Claude Code (CLI) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Pranati Modumudi | Codebase orientation, design review, build/CI setup, project docs/scripts, PR review, endpoint implementation and tests |
 | Claude Code (VS Code extension) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Mahsa Mohajeripour | Job endpoint and dispatcher design, implementation and tests |
+| Claude (claude.ai app, chat) | Claude Opus 5.5 | Personal Anthropic account (claude.ai) | Rob Stott | Generating the V2 migration, the delete resource endpoint and its tests, and resolving its merge conflicts |
 
 Add a row for any other tool (ChatGPT, Copilot, Cursor, Gemini, etc.).
 
@@ -37,13 +38,14 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 32,308,840 tokens** (as of 2026-10-26)
+**Grand total, all tools, all members: 51,054,167 tokens** (as of 2026-10-26)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
 | Claude Code | Pranati Modumudi | 446 | 169,259 | 435,454 | 21,161,516 | 21,766,675 |
 | Claude Code | Mahsa Mohajeripour | 138 | 82,749 | 584,120 | 9,875,158 | 10,542,165 |
-| **All** | | **584** | **252,008** | **1,019,574** | **31,036,674** | **32,308,840** |
+| Claude (claude.ai app) | Rob Stott | 94 | 56,370 | 851,934 | 17,836,929 | 18,745,327 |
+| **All** | | **678** | **308,378** | **1,871,508** | **48,873,603** | **51,054,167** |
 
 ### How to get your token counts
 
@@ -333,3 +335,19 @@ session, 2026-10-19 to 2026-10-26, measured near the end. The session was
 started from the parent folder `~/Projects/dream-team`, so
 `./scripts/ai-token-usage.sh` doesn't find it; these counts use the
 script's formula on that folder's session log.)
+
+### 2026-10-15 to 2026-10-26 — Rob Stott — Claude (claude.ai app) / Claude Opus 5.5
+**Session ID:** none (claude.ai chat, not Claude Code)
+
+- **Tool:** Claude in the claude.ai app (chat, not Claude Code), model Claude Opus 5.5.
+- **Where I got it:** claude.ai (Anthropic), through my personal Claude account.
+- **How I used it:** to generate code that I then reviewed, built with `./mvnw verify`, and committed myself.
+- **How tokens were counted:** from the conversation's usage logs, in the same columns as `./scripts/ai-token-usage.sh`, counting only the requests that generated code.
+
+| Date | What was generated | Prompts (summary) | Files | Merged? | Tokens (input / output / cache write / cache read / **total**) |
+|---|---|---|---|---|---|
+| 2026-10-15 | Delete Job endpoint: exceptions, service, controller, response DTO, unit + API tests, and Checkstyle fixes | "walk me through Delete Job" | (not in repo) | No: a duplicate of Mahsa's Delete Job (#20), so it was dropped | 18 / 15,136 / 31,958 / 2,311,317 / **2,358,429** |
+| 2026-10-19 | DB migration so a resource that finished jobs used can be deleted (`ON DELETE CASCADE` on `job_resource.resource_id`) | "walk me through the cascade migration" | `src/main/resources/db/migration/V2__cascade_job_resource_on_resource_delete.sql` | Yes (#22) | 18 / 6,406 / 12,049 / 2,631,203 / **2,649,676** |
+| 2026-10-20 to 2026-10-24 | Delete Resource endpoint and tests: service method, controller method, response DTO, README section, unit + API tests | "walk me through Delete Resource" | `dto/DeleteResourceResponse.java`; `deleteResource` in `service/ResourceService.java` and `controller/ResourceController.java`; README `DELETE /resources/{resourceId}`; `test/.../controller/DeleteResourceApiTest.java`; delete tests in `test/.../service/ResourceServiceTest.java` | Yes (#25) | 28 / 21,728 / 355,706 / 5,403,506 / **5,780,968** |
+| 2026-10-26 | Merge of main into the delete resource branch: resolved conflicts, updated the API test for the new `GET /resources` response, and added delete resource to the README's Call Order, Side Effects, Incorrect Usage, and Deviations sections | "walk me through fixing #25's conflicts" | `service/ResourceService.java`, `controller/ResourceController.java`, `test/.../service/ResourceServiceTest.java` (imports and class Javadoc); `test/.../controller/DeleteResourceApiTest.java`; `README.md` | Yes (#25) | 30 / 13,100 / 452,221 / 7,490,903 / **7,956,254** |
+| | | | | **Total** | 94 / 56,370 / 851,934 / 17,836,929 / **18,745,327** |
