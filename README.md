@@ -211,10 +211,10 @@ When the request body fails validation, the response also includes an `errors` l
     }
     ```
     - resourceType (required)
-    - unitsRequested (integer, required): The number of CPU or GPU units required. Must be nonnegative.
-    - minMemoryGb (integer, required): The minimum amount of memory needed for the unit. Must be nonnegative.
-    - minCores (integer): The number of cores required for a CPU request. Must be null if requesting GPU.
-    - maxDurationHours (integer, required): A lease on the maximum amount of time this job can hold the resource. Must be nonnegative.
+    - unitsRequested (integer, required): The number of CPU or GPU units required. Must be positive.
+    - minMemoryGb (integer, required): The minimum amount of memory needed for the unit. Must be positive.
+    - minCores (integer): The number of cores required for a CPU request. Must be positive. Must be null if requesting GPU.
+    - maxDurationHours (integer, required): A lease on the maximum amount of time this job can hold the resource. Must be positive.
 
 - Responses:
     - `201 Created` -- Job created successfully. Returns job information, along with its current status, when the job was started, and associated resource IDs.
