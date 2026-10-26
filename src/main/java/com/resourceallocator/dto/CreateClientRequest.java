@@ -9,6 +9,11 @@ import jakarta.validation.constraints.Size;
 /**
  * Body of a request to register a new client organization.
  *
+ * <p>The 255-character limit on {@code orgName} is checked here, on the
+ * raw value, before {@code ClientService} trims it. A name padded with
+ * surrounding whitespace past 255 characters is therefore rejected even if
+ * its trimmed form would fit.
+ *
  * @param orgName unique name of the organization
  * @param maxCpus most CPU units the organization's jobs may hold at once
  * @param maxGpus most GPU units the organization's jobs may hold at once
