@@ -342,7 +342,6 @@ script's formula on that folder's session log.)
 - **Tool:** Claude in the claude.ai app (chat, not Claude Code), model Claude Opus 5.5.
 - **Where I got it:** claude.ai (Anthropic), through my personal Claude account.
 - **How I used it:** to generate code that I then reviewed, built with `./mvnw verify`, and committed myself.
-- **How tokens were counted:** from the conversation's usage logs, in the same columns as `./scripts/ai-token-usage.sh`, counting only the requests that generated code.
 
 | Date | What was generated | Prompts (summary) | Files | Merged? | Tokens (input / output / cache write / cache read / **total**) |
 |---|---|---|---|---|---|
