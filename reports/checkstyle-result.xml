@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="12.3.1">
+<file name="src/main/java/com/resourceallocator/dto/DeleteJobResponse.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/AddJobRequest.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/JobResponse.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/JobQueueResponse.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/JobStatusCounts.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/AddResourceRequest.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/UpdateResourceRequest.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/CreateClientResponse.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/JobQueueEntry.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/ResourceResponse.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/JobQueueFilter.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/RequiredResources.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/CreateClientRequest.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/package-info.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/BlockedReason.java">
+</file>
+<file name="src/main/java/com/resourceallocator/repository/JobRepository.java">
+</file>
+<file name="src/main/java/com/resourceallocator/repository/ResourceRepository.java">
+</file>
+<file name="src/main/java/com/resourceallocator/repository/OrganizationRepository.java">
+</file>
+<file name="src/main/java/com/resourceallocator/repository/package-info.java">
+</file>
+<file name="src/main/java/com/resourceallocator/auth/ApiKeyHasher.java">
+</file>
+<file name="src/main/java/com/resourceallocator/auth/ApiKeyAuthInterceptor.java">
+</file>
+<file name="src/main/java/com/resourceallocator/auth/ApiKeyAuthConfig.java">
+</file>
+<file name="src/main/java/com/resourceallocator/auth/package-info.java">
+</file>
+<file name="src/main/java/com/resourceallocator/ResourceAllocatorApplication.java">
+</file>
+<file name="src/main/java/com/resourceallocator/controller/ClientController.java">
+</file>
+<file name="src/main/java/com/resourceallocator/controller/JobQueueController.java">
+</file>
+<file name="src/main/java/com/resourceallocator/controller/ResourceController.java">
+</file>
+<file name="src/main/java/com/resourceallocator/controller/JobController.java">
+</file>
+<file name="src/main/java/com/resourceallocator/controller/package-info.java">
+</file>
+<file name="src/main/java/com/resourceallocator/model/Organization.java">
+</file>
+<file name="src/main/java/com/resourceallocator/model/Job.java">
+</file>
+<file name="src/main/java/com/resourceallocator/model/Resource.java">
+</file>
+<file name="src/main/java/com/resourceallocator/model/ResourceType.java">
+</file>
+<file name="src/main/java/com/resourceallocator/model/JobStatus.java">
+</file>
+<file name="src/main/java/com/resourceallocator/model/package-info.java">
+</file>
+<file name="src/main/java/com/resourceallocator/service/ClientService.java">
+</file>
+<file name="src/main/java/com/resourceallocator/service/ResourceService.java">
+</file>
+<file name="src/main/java/com/resourceallocator/service/JobDispatcher.java">
+</file>
+<file name="src/main/java/com/resourceallocator/service/JobService.java">
+</file>
+<file name="src/main/java/com/resourceallocator/service/JobDispatchScheduler.java">
+</file>
+<file name="src/main/java/com/resourceallocator/service/JobQueueService.java">
+</file>
+<file name="src/main/java/com/resourceallocator/service/package-info.java">
+</file>
+<file name="src/main/java/com/resourceallocator/exception/UnauthorizedException.java">
+</file>
+<file name="src/main/java/com/resourceallocator/exception/ConflictException.java">
+</file>
+<file name="src/main/java/com/resourceallocator/exception/ApiExceptionHandler.java">
+</file>
+<file name="src/main/java/com/resourceallocator/exception/InvalidRequestException.java">
+</file>
+<file name="src/main/java/com/resourceallocator/exception/NotFoundException.java">
+</file>
+<file name="src/main/java/com/resourceallocator/exception/package-info.java">
+</file>
+<file name="src/main/java/com/resourceallocator/package-info.java">
+</file>
+</checkstyle>

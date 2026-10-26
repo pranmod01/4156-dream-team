@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreateClientResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.dto</a> &gt; <span class="el_source">CreateClientResponse.java</span></div><h1>CreateClientResponse.java</h1><pre class="source lang-java linenums">package com.resourceallocator.dto;
+// AI-generated (Claude Code, Claude Opus 5.5)
+
+import com.resourceallocator.model.Organization;
+import java.time.Instant;
+
+/**
+ * A newly registered client, including its API key.
+ *
+ * &lt;p&gt;This is the only response that ever contains the raw API key; the
+ * service stores just its hash, so the client must save it now.
+ *
+ * @param id the organization identifier
+ * @param orgName the organization name
+ * @param maxCpus the CPU usage limit
+ * @param maxGpus the GPU usage limit
+ * @param createdAt when the organization was registered
+ * @param apiKey the key to send in the {@code X-API-Key} header
+ */
+<span class="fc" id="L20">public record CreateClientResponse(</span>
+        Long id,
+        String orgName,
+        int maxCpus,
+        int maxGpus,
+        Instant createdAt,
+        String apiKey) {
+
+    /**
+     * Builds the response for a newly saved organization.
+     *
+     * @param organization the saved organization entity
+     * @param apiKey the raw API key issued to it
+     * @return the response view
+     */
+    public static CreateClientResponse from(final Organization organization,
+            final String apiKey) {
+<span class="fc" id="L37">        return new CreateClientResponse(</span>
+<span class="fc" id="L38">                organization.getId(),</span>
+<span class="fc" id="L39">                organization.getOrgName(),</span>
+<span class="fc" id="L40">                organization.getMaxCpus(),</span>
+<span class="fc" id="L41">                organization.getMaxGpus(),</span>
+<span class="fc" id="L42">                organization.getCreatedAt(),</span>
+                apiKey);
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

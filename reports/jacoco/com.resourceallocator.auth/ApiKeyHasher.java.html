@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiKeyHasher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.auth</a> &gt; <span class="el_source">ApiKeyHasher.java</span></div><h1>ApiKeyHasher.java</h1><pre class="source lang-java linenums">package com.resourceallocator.auth;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+
+/**
+ * Hashes API keys so that only their digests are ever stored.
+ */
+public final class ApiKeyHasher {
+
+    /** Digest algorithm; its hex output fits {@code api_key_hash}. */
+    private static final String ALGORITHM = &quot;SHA-256&quot;;
+
+    private ApiKeyHasher() {
+    }
+
+    /**
+     * Returns the lowercase hex SHA-256 digest of an API key.
+     *
+     * @param apiKey the raw API key
+     * @return the 64-character hex digest
+     */
+    public static String hash(final String apiKey) {
+        try {
+<span class="fc" id="L27">            MessageDigest digest = MessageDigest.getInstance(ALGORITHM);</span>
+<span class="fc" id="L28">            byte[] hashed =</span>
+<span class="fc" id="L29">                    digest.digest(apiKey.getBytes(StandardCharsets.UTF_8));</span>
+<span class="fc" id="L30">            return HexFormat.of().formatHex(hashed);</span>
+<span class="nc" id="L31">        } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L32">            throw new IllegalStateException(</span>
+                    ALGORITHM + &quot; is required by every Java platform&quot;, e);
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
