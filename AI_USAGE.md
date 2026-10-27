@@ -381,5 +381,3 @@ keep the queue consistent with the dispatcher.
   tests (part)
 
 Her original endpoints (#7, #8, #10, commit `48da62c`) carry no AI markers.
-
-**Tokens:** Not reported.
