@@ -125,12 +125,12 @@ class JobServiceTest {
     }
 
     @Test
-    void getJobStatusOfUnknownJobIsInvalid() {
+    void getJobStatusOfUnknownJobIsNotFound() {
         when(jobRepository.findByIdAndOrganizationId(7L, ORG_ID))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getJobStatus(organization, 7L))
-                .isInstanceOf(InvalidRequestException.class);
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test

@@ -257,7 +257,7 @@ When the request body fails validation, the response also includes an `errors` l
             "resourceIds": [3]
         }
         ```
-    - `400 Bad Request` -- Also returned if the organization has no job with the given ID.
+    - `404 Not Found` -- The organization has no job with the given ID.
 
 
 ### DELETE /jobs/{jobId}
@@ -451,6 +451,7 @@ When the request body fails validation, the response also includes an `errors` l
 
 ## Deviations from the Proposal
 - **Get Resource Status (`GET /resources`)** does not report current utilization, free time slots, or a `RESERVED` status, and does not take a time window. These depend on reservations of future time, which we did not build: a job either runs as soon as resources are free or waits in the queue. Everything else in the proposal is supported: filters by ID, type, and minimum specs; per-resource status and the job using it; and the organization's usage against its limits.
+- **Get Job Status (`GET /jobs/{jobId}`)** returns `404 Not Found` for an unknown job instead of the proposed `400 Bad Request`, to match Delete Job and Update Resource.
 - **Update Resource (`PATCH /resources/{resourceId}`)** returns `404 Not Found` for an unknown resource instead of the proposed `400 Bad Request`, to match Delete Job and the usual meaning of the status codes. It also returns `409 Conflict` when taking a resource offline while a running job holds it, which the proposal did not cover, so that a running job never loses its resource.
 - **Delete Resource (`DELETE /resources/{resourceId}`)** refuses only resources held by a running job. The proposal also protected resources "reserved for a future job", but there are no reservations, so that case can't occur.
 - **Testing and tooling:** the proposal listed Testcontainers with PostgreSQL for integration tests, and Docker. Instead, the API tests run the full application against an in-memory H2 database, so the test suite and CI need neither Docker nor a running database. The database schema is still created by the same Flyway migrations. There is no Dockerfile; the app is run with `./mvnw spring-boot:run` against a local PostgreSQL.

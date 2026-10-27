@@ -192,10 +192,10 @@ class JobApiTest {
     }
 
     @Test
-    void getJobStatusOfUnknownJobIsBadRequest() throws Exception {
+    void getJobStatusOfUnknownJobIsNotFound() throws Exception {
         mockMvc.perform(get("/jobs/999999")
                         .header(ApiKeyAuthInterceptor.API_KEY_HEADER, API_KEY))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -205,7 +205,7 @@ class JobApiTest {
         mockMvc.perform(get("/jobs/" + jobId)
                         .header(ApiKeyAuthInterceptor.API_KEY_HEADER,
                                 OTHER_API_KEY))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
