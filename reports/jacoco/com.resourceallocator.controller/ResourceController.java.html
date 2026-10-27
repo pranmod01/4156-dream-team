@@ -2,14 +2,18 @@
 
 import com.resourceallocator.auth.ApiKeyAuthInterceptor;
 import com.resourceallocator.dto.AddResourceRequest;
+import com.resourceallocator.dto.DeleteResourceResponse;
+import com.resourceallocator.dto.ResourceFilter;
+import com.resourceallocator.dto.ResourceListResponse;
 import com.resourceallocator.dto.ResourceResponse;
 import com.resourceallocator.dto.UpdateResourceRequest;
 import com.resourceallocator.model.Organization;
+import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.service.ResourceService;
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,12 +21,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
- * Endpoints for registering, listing, and changing the online state of
- * resources.
+ * Endpoints for registering resources, viewing their status, deleting
+ * them, and changing their online state.
  * Every request needs an {@code X-API-Key} header.
  */
 @RestController
@@ -37,9 +42,9 @@ public class ResourceController {
      *
      * @param resourceService service that performs resource operations
      */
-<span class="fc" id="L40">    public ResourceController(final ResourceService resourceService) {</span>
-<span class="fc" id="L41">        this.resourceService = resourceService;</span>
-<span class="fc" id="L42">    }</span>
+<span class="fc" id="L45">    public ResourceController(final ResourceService resourceService) {</span>
+<span class="fc" id="L46">        this.resourceService = resourceService;</span>
+<span class="fc" id="L47">    }</span>
 
     /**
      * Registers a new resource for the caller's organization.
@@ -53,13 +58,13 @@ public class ResourceController {
             @RequestAttribute(ApiKeyAuthInterceptor.ORGANIZATION_ATTRIBUTE)
             final Organization organization,
             @Valid @RequestBody final AddResourceRequest request) {
-<span class="fc" id="L56">        ResourceResponse created =</span>
-<span class="fc" id="L57">                resourceService.addResource(organization, request);</span>
-<span class="fc" id="L58">        URI location = ServletUriComponentsBuilder.fromCurrentRequest()</span>
-<span class="fc" id="L59">                .path(&quot;/{id}&quot;)</span>
-<span class="fc" id="L60">                .buildAndExpand(created.id())</span>
-<span class="fc" id="L61">                .toUri();</span>
-<span class="fc" id="L62">        return ResponseEntity.created(location).body(created);</span>
+<span class="fc" id="L61">        ResourceResponse created =</span>
+<span class="fc" id="L62">                resourceService.addResource(organization, request);</span>
+<span class="fc" id="L63">        URI location = ServletUriComponentsBuilder.fromCurrentRequest()</span>
+<span class="fc" id="L64">                .path(&quot;/{id}&quot;)</span>
+<span class="fc" id="L65">                .buildAndExpand(created.id())</span>
+<span class="fc" id="L66">                .toUri();</span>
+<span class="fc" id="L67">        return ResponseEntity.created(location).body(created);</span>
     }
 
     /**
@@ -76,22 +81,58 @@ public class ResourceController {
             final Organization organization,
             @PathVariable(&quot;resourceId&quot;) final Long resourceId,
             @Valid @RequestBody final UpdateResourceRequest request) {
-<span class="fc" id="L79">        return resourceService.updateResource(</span>
+<span class="fc" id="L84">        return resourceService.updateResource(</span>
                 organization, resourceId, request);
     }
 
     // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
     /**
-     * Lists all of the caller's resources and whether each is online.
+     * Lists the caller's resources with their current status, and the
+     * organization's usage against its limits. All filters are optional;
+     * {@code resourceType} is case-insensitive.
      *
      * @param organization the organization identified by the API key
-     * @return 200 OK with the resources, ordered by identifier
+     * @param id only return the resource with this identifier
+     * @param resourceType only return resources of this type
+     * @param minMemoryGb only return resources with at least this much
+     *                    memory
+     * @param minCores only return CPUs with at least this many cores
+     * @return 200 OK with the matching resources and the usage summary
      */
     @GetMapping
-    public List&lt;ResourceResponse&gt; listResources(
+    public ResourceListResponse listResources(
             @RequestAttribute(ApiKeyAuthInterceptor.ORGANIZATION_ATTRIBUTE)
-            final Organization organization) {
-<span class="fc" id="L94">        return resourceService.listResources(organization);</span>
+            final Organization organization,
+            @RequestParam(name = &quot;id&quot;, required = false) final Long id,
+            @RequestParam(name = &quot;resourceType&quot;, required = false)
+            final String resourceType,
+            @RequestParam(name = &quot;minMemoryGb&quot;, required = false)
+            final Integer minMemoryGb,
+            @RequestParam(name = &quot;minCores&quot;, required = false)
+            final Integer minCores) {
+<span class="fc" id="L113">        ResourceFilter filter = new ResourceFilter(id,</span>
+<span class="fc" id="L114">                RequestParams.parseEnum(</span>
+                        ResourceType.class, &quot;resourceType&quot;, resourceType),
+                minMemoryGb, minCores);
+<span class="fc" id="L117">        return resourceService.listResources(organization, filter);</span>
+    }
+    // END AI-generated
+
+    // BEGIN AI-generated (Claude, Claude Opus 5.5), reviewed by Rob
+    /**
+     * Permanently deletes one of the caller's resources. A resource held
+     * by a running job cannot be deleted.
+     *
+     * @param organization the organization identified by the API key
+     * @param resourceId identifier of the resource to delete
+     * @return 200 OK with the deleted resource's identifier
+     */
+    @DeleteMapping(&quot;/{resourceId}&quot;)
+    public DeleteResourceResponse deleteResource(
+            @RequestAttribute(ApiKeyAuthInterceptor.ORGANIZATION_ATTRIBUTE)
+            final Organization organization,
+            @PathVariable(&quot;resourceId&quot;) final Long resourceId) {
+<span class="fc" id="L135">        return resourceService.deleteResource(organization, resourceId);</span>
     }
     // END AI-generated
 }

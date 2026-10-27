@@ -64,7 +64,7 @@ Any violation from either tool fails the build.
 
 ### Committed Reports
 Reports from the last `./mvnw clean verify` are committed in `reports/`:
-- `reports/jacoco/index.html`: coverage report (open in a browser). Branch coverage: 91.8% (134 of 146 branches).
+- `reports/jacoco/index.html`: coverage report (open in a browser). Branch coverage: 93.8% (180 of 192 branches).
 - `reports/checkstyle-result.xml`: Checkstyle report. No `<error>` entries means clean.
 - `reports/pmd.xml`: PMD report. No `<violation>` entries means clean.
 
@@ -92,7 +92,7 @@ Each organization sees and uses only its own resources and jobs. Asking for anot
 
 ### Side Effects and Scheduling
 - **The dispatcher** moves jobs through `QUEUED` → `RUNNING` → `DONE`. It ends running jobs whose lease (`maxDurationHours`) has expired, then starts queued jobs that have enough free online resources and fit within the usage limit.
-- It runs at the start of every `/jobs` request (`POST /jobs`, `GET /jobs/{jobId}`, `DELETE /jobs/{jobId}`, `GET /jobs/queue`), so their responses are always current.
+- It runs at the start of every `/jobs` request (`POST /jobs`, `GET /jobs/{jobId}`, `DELETE /jobs/{jobId}`, `GET /jobs/queue`) and of `GET /resources`, so their responses are always current.
 - It also runs in the background every 30 seconds for each organization with unfinished jobs (set with `dispatcher.interval-ms`).
 - `POST /resources`, `PATCH /resources/{resourceId}`, and `DELETE /resources/{resourceId}` do **not** start queued jobs. A newly added or re-enabled resource is picked up on the next `/jobs` request or background run. When taking a resource offline or deleting it, the server first locks the organization (so no dispatch can assign the resource meanwhile) and marks jobs whose lease has expired as `DONE`, so a resource whose job just finished can be taken offline or deleted.
 - **Usage limits:** `maxCpus`/`maxGpus` cap the units an organization's *running* jobs hold at once. A job asking for more than the limit is rejected with `400`. A job within the limit that would push the running total over it waits in the queue (`blockedReason: EXCEEDS_USAGE_LIMIT`).

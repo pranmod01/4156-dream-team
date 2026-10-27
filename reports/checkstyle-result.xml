@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <checkstyle version="12.3.1">
+<file name="src/main/java/com/resourceallocator/dto/ResourceListResponse.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/ResourceStatusEntry.java">
+</file>
 <file name="src/main/java/com/resourceallocator/dto/DeleteJobResponse.java">
 </file>
 <file name="src/main/java/com/resourceallocator/dto/AddJobRequest.java">
@@ -8,11 +12,19 @@
 </file>
 <file name="src/main/java/com/resourceallocator/dto/JobQueueResponse.java">
 </file>
+<file name="src/main/java/com/resourceallocator/dto/ResourceUsage.java">
+</file>
 <file name="src/main/java/com/resourceallocator/dto/JobStatusCounts.java">
 </file>
 <file name="src/main/java/com/resourceallocator/dto/AddResourceRequest.java">
 </file>
 <file name="src/main/java/com/resourceallocator/dto/UpdateResourceRequest.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/ResourceFilter.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/ResourceSummary.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/ResourceStatus.java">
 </file>
 <file name="src/main/java/com/resourceallocator/dto/CreateClientResponse.java">
 </file>
@@ -25,6 +37,8 @@
 <file name="src/main/java/com/resourceallocator/dto/RequiredResources.java">
 </file>
 <file name="src/main/java/com/resourceallocator/dto/CreateClientRequest.java">
+</file>
+<file name="src/main/java/com/resourceallocator/dto/DeleteResourceResponse.java">
 </file>
 <file name="src/main/java/com/resourceallocator/dto/package-info.java">
 </file>
@@ -51,6 +65,8 @@
 <file name="src/main/java/com/resourceallocator/controller/ClientController.java">
 </file>
 <file name="src/main/java/com/resourceallocator/controller/JobQueueController.java">
+</file>
+<file name="src/main/java/com/resourceallocator/controller/RequestParams.java">
 </file>
 <file name="src/main/java/com/resourceallocator/controller/ResourceController.java">
 </file>

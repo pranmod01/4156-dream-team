@@ -13,6 +13,8 @@ requires. Update it **at the end of every AI session**.
 
 Add a row for any other tool (ChatGPT, Copilot, Cursor, Gemini, etc.).
 
+**No AI use:** Nick (`nlkeung`) did not use any AI tools on this project.
+
 ## Marking AI-generated code
 
 Any file or code block written **or debugged** by AI must be marked, even if
@@ -38,14 +40,14 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 51,054,167 tokens** (as of 2026-10-26)
+**Grand total, all tools, all members: 55,154,853 tokens** (as of 2026-10-26)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
-| Claude Code | Pranati Modumudi | 446 | 169,259 | 435,454 | 21,161,516 | 21,766,675 |
+| Claude Code | Pranati Modumudi | 486 | 183,272 | 638,738 | 25,044,865 | 25,867,361 |
 | Claude Code | Mahsa Mohajeripour | 138 | 82,749 | 584,120 | 9,875,158 | 10,542,165 |
 | Claude (claude.ai app) | Rob Stott | 94 | 56,370 | 851,934 | 17,836,929 | 18,745,327 |
-| **All** | | **678** | **308,378** | **1,871,508** | **48,873,603** | **51,054,167** |
+| **All** | | **718** | **322,391** | **2,074,792** | **52,756,952** | **55,154,853** |
 
 ### How to get your token counts
 
@@ -241,6 +243,9 @@ Resource Status endpoint (#29).
   and a per-type usage summary for `GET /resources`; wrote unit and API
   tests; rewrote its README section and added "Deviations from the
   Proposal".
+- On `main`, after all PRs merged: added the "no AI use" line for Nick,
+  noted in the README that `GET /resources` runs the dispatcher, and
+  refreshed `reports/` and the coverage number.
 
 **Files generated / modified by AI:**
 - `README.md` (both branches): sections listed above
@@ -272,8 +277,8 @@ Resource Status endpoint (#29).
 approved by Pranati Modumudi before it was made. Ran `./mvnw clean verify`:
 120/120 tests pass, 0 Checkstyle and 0 PMD violations, 93.7% branch
 coverage.
-**Tokens:** 198 / 82,925 / 148,833 / 11,507,622 / **11,739,578** (measured just
-before committing; this session continued afterwards).
+**Tokens:** 238 / 96,938 / 352,117 / 15,390,971 / **15,840,264** (final, from
+`./scripts/ai-token-usage.sh 5c52e294-7473-4cde-ad13-ef2edb65b609`).
 
 ### 2026-10-19 — Mahsa Mohajeripour — Claude Code / Claude Opus 5.5
 **Session ID:** `c4a5740c-c79d-434b-908c-751f243c929c`

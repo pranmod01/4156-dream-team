@@ -49,35 +49,37 @@ public class ClientService {
     @Transactional
     public CreateClientResponse createClient(
             final CreateClientRequest request) {
-<span class="fc" id="L52">        String orgName = request.orgName().trim();</span>
-<span class="fc bfc" id="L53" title="All 2 branches covered.">        if (organizationRepository.existsByOrgName(orgName)) {</span>
-<span class="fc" id="L54">            throw duplicateName(orgName);</span>
+        // The 255-character limit was already checked on the untrimmed
+        // name (see CreateClientRequest).
+<span class="fc" id="L54">        String orgName = request.orgName().trim();</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (organizationRepository.existsByOrgName(orgName)) {</span>
+<span class="fc" id="L56">            throw duplicateName(orgName);</span>
         }
-<span class="fc" id="L56">        String apiKey = generateApiKey();</span>
-<span class="fc" id="L57">        Organization organization = new Organization(</span>
+<span class="fc" id="L58">        String apiKey = generateApiKey();</span>
+<span class="fc" id="L59">        Organization organization = new Organization(</span>
                 orgName,
-<span class="fc" id="L59">                ApiKeyHasher.hash(apiKey),</span>
-<span class="fc" id="L60">                request.maxCpus(),</span>
-<span class="fc" id="L61">                request.maxGpus());</span>
+<span class="fc" id="L61">                ApiKeyHasher.hash(apiKey),</span>
+<span class="fc" id="L62">                request.maxCpus(),</span>
+<span class="fc" id="L63">                request.maxGpus());</span>
         try {
             // Flush now so a concurrent registration of the same name
             // fails here, as a 409, rather than at commit time.
-<span class="fc" id="L65">            organization = organizationRepository.saveAndFlush(organization);</span>
-<span class="fc" id="L66">        } catch (DataIntegrityViolationException e) {</span>
-<span class="fc" id="L67">            throw duplicateName(orgName);</span>
-<span class="fc" id="L68">        }</span>
-<span class="fc" id="L69">        return CreateClientResponse.from(organization, apiKey);</span>
+<span class="fc" id="L67">            organization = organizationRepository.saveAndFlush(organization);</span>
+<span class="fc" id="L68">        } catch (DataIntegrityViolationException e) {</span>
+<span class="fc" id="L69">            throw duplicateName(orgName);</span>
+<span class="fc" id="L70">        }</span>
+<span class="fc" id="L71">        return CreateClientResponse.from(organization, apiKey);</span>
     }
 
     private static ConflictException duplicateName(final String orgName) {
-<span class="fc" id="L73">        return new ConflictException(</span>
+<span class="fc" id="L75">        return new ConflictException(</span>
                 &quot;Organization '&quot; + orgName + &quot;' already exists.&quot;);
     }
 
     private static String generateApiKey() {
-<span class="fc" id="L78">        byte[] bytes = new byte[API_KEY_BYTES];</span>
-<span class="fc" id="L79">        RANDOM.nextBytes(bytes);</span>
-<span class="fc" id="L80">        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);</span>
+<span class="fc" id="L80">        byte[] bytes = new byte[API_KEY_BYTES];</span>
+<span class="fc" id="L81">        RANDOM.nextBytes(bytes);</span>
+<span class="fc" id="L82">        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

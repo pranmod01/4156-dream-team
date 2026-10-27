@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ResourceService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">resource-allocator</a> &gt; <a href="index.source.html" class="el_package">com.resourceallocator.service</a> &gt; <span class="el_source">ResourceService.java</span></div><h1>ResourceService.java</h1><pre class="source lang-java linenums">package com.resourceallocator.service;
 
 import com.resourceallocator.dto.AddResourceRequest;
+import com.resourceallocator.dto.DeleteResourceResponse;
+import com.resourceallocator.dto.ResourceFilter;
+import com.resourceallocator.dto.ResourceListResponse;
 import com.resourceallocator.dto.ResourceResponse;
+import com.resourceallocator.dto.ResourceStatusEntry;
+import com.resourceallocator.dto.ResourceSummary;
+import com.resourceallocator.dto.ResourceUsage;
 import com.resourceallocator.dto.UpdateResourceRequest;
 import com.resourceallocator.exception.ConflictException;
 import com.resourceallocator.exception.InvalidRequestException;
 import com.resourceallocator.exception.NotFoundException;
+import com.resourceallocator.model.Job;
+import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.Resource;
 import com.resourceallocator.model.ResourceType;
+import com.resourceallocator.repository.JobRepository;
 import com.resourceallocator.repository.ResourceRepository;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Registers and lists resources and changes their online state.
+ * Registers resources, reports their status, deletes them, and changes
+ * their online state.
  */
 @Service
 public class ResourceService {
@@ -26,17 +38,23 @@ public class ResourceService {
     /** Checks whether running jobs hold a resource. */
     private final JobDispatcher jobDispatcher;
 
+    /** Reads running jobs and their resource assignments. */
+    private final JobRepository jobRepository;
+
     /**
      * Creates the service.
      *
      * @param resourceRepository repository used to persist resources
      * @param jobDispatcher dispatcher used to check resource usage
+     * @param jobRepository repository used to read running jobs
      */
     public ResourceService(final ResourceRepository resourceRepository,
-<span class="fc" id="L36">            final JobDispatcher jobDispatcher) {</span>
-<span class="fc" id="L37">        this.resourceRepository = resourceRepository;</span>
-<span class="fc" id="L38">        this.jobDispatcher = jobDispatcher;</span>
-<span class="fc" id="L39">    }</span>
+            final JobDispatcher jobDispatcher,
+<span class="fc" id="L53">            final JobRepository jobRepository) {</span>
+<span class="fc" id="L54">        this.resourceRepository = resourceRepository;</span>
+<span class="fc" id="L55">        this.jobDispatcher = jobDispatcher;</span>
+<span class="fc" id="L56">        this.jobRepository = jobRepository;</span>
+<span class="fc" id="L57">    }</span>
 
     /**
      * Registers a new resource owned by the given organization.
@@ -50,14 +68,14 @@ public class ResourceService {
     @Transactional
     public ResourceResponse addResource(final Organization organization,
             final AddResourceRequest request) {
-<span class="fc" id="L53">        validateCores(request.resourceType(), request.cores());</span>
-<span class="fc" id="L54">        Resource resource = new Resource(</span>
-<span class="fc" id="L55">                organization.getId(),</span>
-<span class="fc" id="L56">                request.resourceType(),</span>
-<span class="fc" id="L57">                request.memoryGb(),</span>
-<span class="fc" id="L58">                request.cores(),</span>
-<span class="fc" id="L59">                request.online());</span>
-<span class="fc" id="L60">        return ResourceResponse.from(resourceRepository.save(resource));</span>
+<span class="fc" id="L71">        validateCores(request.resourceType(), request.cores());</span>
+<span class="fc" id="L72">        Resource resource = new Resource(</span>
+<span class="fc" id="L73">                organization.getId(),</span>
+<span class="fc" id="L74">                request.resourceType(),</span>
+<span class="fc" id="L75">                request.memoryGb(),</span>
+<span class="fc" id="L76">                request.cores(),</span>
+<span class="fc" id="L77">                request.online());</span>
+<span class="fc" id="L78">        return ResourceResponse.from(resourceRepository.save(resource));</span>
     }
 
     /**
@@ -75,48 +93,169 @@ public class ResourceService {
     @Transactional
     public ResourceResponse updateResource(final Organization organization,
             final Long resourceId, final UpdateResourceRequest request) {
-<span class="fc" id="L78">        Resource resource = resourceRepository</span>
-<span class="fc" id="L79">                .findByIdAndOrganizationId(resourceId, organization.getId())</span>
-<span class="fc" id="L80">                .orElseThrow(() -&gt; new NotFoundException(</span>
+<span class="fc" id="L96">        Resource resource = resourceRepository</span>
+<span class="fc" id="L97">                .findByIdAndOrganizationId(resourceId, organization.getId())</span>
+<span class="fc" id="L98">                .orElseThrow(() -&gt; new NotFoundException(</span>
                         &quot;Resource &quot; + resourceId + &quot; was not found.&quot;));
         // A resource held by a running job cannot be taken offline.
-<span class="fc bfc" id="L83" title="All 4 branches covered.">        if (!request.online() &amp;&amp; jobDispatcher.lockAndCheckResourceInUse(</span>
-<span class="fc" id="L84">                organization.getId(), resourceId)) {</span>
-<span class="fc" id="L85">            throw new ConflictException(&quot;Resource &quot; + resourceId</span>
+<span class="fc bfc" id="L101" title="All 4 branches covered.">        if (!request.online() &amp;&amp; jobDispatcher.lockAndCheckResourceInUse(</span>
+<span class="fc" id="L102">                organization.getId(), resourceId)) {</span>
+<span class="fc" id="L103">            throw new ConflictException(&quot;Resource &quot; + resourceId</span>
                     + &quot; is in use by a running job.&quot;);
         }
-<span class="fc" id="L88">        resource.setOnline(request.online());</span>
-<span class="fc" id="L89">        return ResourceResponse.from(resource);</span>
+<span class="fc" id="L106">        resource.setOnline(request.online());</span>
+<span class="fc" id="L107">        return ResourceResponse.from(resource);</span>
     }
 
     // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
     /**
-     * Lists every resource owned by the organization, online or offline.
+     * Lists the organization's resources that match the filter, each
+     * with its current status and the running job holding it, plus the
+     * organization's usage against its limits.
+     *
+     * &lt;p&gt;The dispatcher runs first, as it does for the job endpoints, so
+     * statuses reflect ended leases and newly started jobs. The summary
+     * always covers all of the organization's resources and running jobs,
+     * whichever filters are applied.
      *
      * @param organization the authenticated organization
-     * @return the organization's resources, ordered by identifier
+     * @param filter the optional filters to apply
+     * @return the matching resources, ordered by identifier, and the
+     *         usage summary
+     * @throws InvalidRequestException if {@code minMemoryGb} or
+     *         {@code minCores} is not positive
+     * @throws NotFoundException if {@code id} is set and the
+     *         organization has no resource with that identifier
      */
-    @Transactional(readOnly = true)
-    public List&lt;ResourceResponse&gt; listResources(
-            final Organization organization) {
-<span class="fc" id="L102">        return resourceRepository</span>
-<span class="fc" id="L103">                .findByOrganizationIdOrderByIdAsc(organization.getId())</span>
-<span class="fc" id="L104">                .stream()</span>
-<span class="fc" id="L105">                .map(ResourceResponse::from)</span>
-<span class="fc" id="L106">                .toList();</span>
+    @Transactional
+    public ResourceListResponse listResources(
+            final Organization organization, final ResourceFilter filter) {
+<span class="fc" id="L133">        validate(filter);</span>
+<span class="fc" id="L134">        jobDispatcher.dispatch(organization.getId());</span>
+<span class="fc" id="L135">        List&lt;Resource&gt; resources = resourceRepository</span>
+<span class="fc" id="L136">                .findByOrganizationIdOrderByIdAsc(organization.getId());</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">        if (filter.id() != null &amp;&amp; resources.stream()</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">                .noneMatch(resource -&gt; resource.getId().equals(filter.id()))) {</span>
+<span class="fc" id="L139">            throw new NotFoundException(</span>
+<span class="fc" id="L140">                    &quot;Resource &quot; + filter.id() + &quot; was not found.&quot;);</span>
+        }
+<span class="fc" id="L142">        Map&lt;Long, Long&gt; runningJobByResource = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">        for (Object[] row : jobRepository</span>
+<span class="fc" id="L144">                .findRunningAssignments(organization.getId())) {</span>
+<span class="fc" id="L145">            runningJobByResource.put(((Number) row[0]).longValue(),</span>
+<span class="fc" id="L146">                    ((Number) row[1]).longValue());</span>
+<span class="fc" id="L147">        }</span>
+<span class="fc" id="L148">        List&lt;ResourceStatusEntry&gt; entries = resources.stream()</span>
+<span class="fc" id="L149">                .filter(resource -&gt; matches(resource, filter))</span>
+<span class="fc" id="L150">                .map(resource -&gt; ResourceStatusEntry.from(resource,</span>
+<span class="fc" id="L151">                        runningJobByResource.get(resource.getId())))</span>
+<span class="fc" id="L152">                .toList();</span>
+<span class="fc" id="L153">        List&lt;Job&gt; runningJobs = jobRepository</span>
+<span class="fc" id="L154">                .findByOrganizationIdAndStatusOrderBySubmittedAtAscIdAsc(</span>
+<span class="fc" id="L155">                        organization.getId(), JobStatus.RUNNING);</span>
+<span class="fc" id="L156">        ResourceSummary summary = new ResourceSummary(</span>
+<span class="fc" id="L157">                usage(ResourceType.CPU, organization.getMaxCpus(),</span>
+                        runningJobs, resources, runningJobByResource),
+<span class="fc" id="L159">                usage(ResourceType.GPU, organization.getMaxGpus(),</span>
+                        runningJobs, resources, runningJobByResource));
+<span class="fc" id="L161">        return new ResourceListResponse(entries, summary);</span>
+    }
+
+    private static void validate(final ResourceFilter filter) {
+<span class="fc bfc" id="L165" title="All 4 branches covered.">        if (filter.minMemoryGb() != null &amp;&amp; filter.minMemoryGb() &lt;= 0) {</span>
+<span class="fc" id="L166">            throw new InvalidRequestException(</span>
+                    &quot;minMemoryGb must be positive.&quot;);
+        }
+<span class="fc bfc" id="L169" title="All 4 branches covered.">        if (filter.minCores() != null &amp;&amp; filter.minCores() &lt;= 0) {</span>
+<span class="fc" id="L170">            throw new InvalidRequestException(&quot;minCores must be positive.&quot;);</span>
+        }
+<span class="fc" id="L172">    }</span>
+
+    private static boolean matches(final Resource resource,
+            final ResourceFilter filter) {
+<span class="fc bfc" id="L176" title="All 4 branches covered.">        if (filter.id() != null &amp;&amp; !resource.getId().equals(filter.id())) {</span>
+<span class="fc" id="L177">            return false;</span>
+        }
+<span class="fc bfc" id="L179" title="All 2 branches covered.">        if (filter.resourceType() != null</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">                &amp;&amp; resource.getResourceType() != filter.resourceType()) {</span>
+<span class="fc" id="L181">            return false;</span>
+        }
+<span class="fc bfc" id="L183" title="All 2 branches covered.">        if (filter.minMemoryGb() != null</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">                &amp;&amp; resource.getMemoryGb() &lt; filter.minMemoryGb()) {</span>
+<span class="fc" id="L185">            return false;</span>
+        }
+        // Only CPUs have cores, so a core filter excludes every GPU.
+<span class="fc bfc" id="L188" title="All 2 branches covered.">        return filter.minCores() == null</span>
+<span class="fc bfc" id="L189" title="All 2 branches covered.">                || (resource.getCores() != null</span>
+<span class="fc bfc" id="L190" title="All 2 branches covered.">                        &amp;&amp; resource.getCores() &gt;= filter.minCores());</span>
+    }
+
+    // Units held by running jobs of one type against the limit, and how
+    // many resources of that type are online and not held by a job.
+    private static ResourceUsage usage(final ResourceType type,
+            final int limit, final List&lt;Job&gt; runningJobs,
+            final List&lt;Resource&gt; resources,
+            final Map&lt;Long, Long&gt; runningJobByResource) {
+<span class="fc" id="L199">        int inUse = runningJobs.stream()</span>
+<span class="fc bfc" id="L200" title="All 2 branches covered.">                .filter(job -&gt; job.getResourceType() == type)</span>
+<span class="fc" id="L201">                .mapToInt(Job::getUnitsRequested)</span>
+<span class="fc" id="L202">                .sum();</span>
+<span class="fc" id="L203">        long free = resources.stream()</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">                .filter(resource -&gt; resource.getResourceType() == type</span>
+<span class="fc bfc" id="L205" title="All 2 branches covered.">                        &amp;&amp; resource.isOnline()</span>
+<span class="fc bfc" id="L206" title="All 2 branches covered.">                        &amp;&amp; !runningJobByResource.containsKey(resource.getId()))</span>
+<span class="fc" id="L207">                .count();</span>
+<span class="fc" id="L208">        return new ResourceUsage(limit, inUse, Math.max(0, limit - inUse),</span>
+                free);
+    }
+    // END AI-generated
+
+    // BEGIN AI-generated (Claude, Claude Opus 5.5), reviewed by Rob
+    /**
+     * Permanently deletes one of the organization's resources. A resource
+     * held by a running job cannot be deleted. Its assignments to finished
+     * jobs are removed with it (the database cascades them).
+     *
+     * &lt;p&gt;The organization is locked before the resource is looked up, so
+     * no dispatch can assign the resource while the delete runs, and a
+     * second delete of the same resource waits and then gets 404 instead
+     * of failing.
+     *
+     * @param organization the authenticated organization
+     * @param resourceId identifier of the resource to delete
+     * @return confirmation with the deleted resource's identifier
+     * @throws NotFoundException if the organization has no resource with
+     *         that identifier
+     * @throws ConflictException if a running job holds the resource
+     */
+    @Transactional
+    public DeleteResourceResponse deleteResource(
+            final Organization organization, final Long resourceId) {
+<span class="fc" id="L234">        boolean inUse = jobDispatcher.lockAndCheckResourceInUse(</span>
+<span class="fc" id="L235">                organization.getId(), resourceId);</span>
+<span class="fc" id="L236">        Resource resource = resourceRepository</span>
+<span class="fc" id="L237">                .findByIdAndOrganizationId(resourceId, organization.getId())</span>
+<span class="fc" id="L238">                .orElseThrow(() -&gt; new NotFoundException(</span>
+                        &quot;Resource &quot; + resourceId + &quot; was not found.&quot;));
+<span class="fc bfc" id="L240" title="All 2 branches covered.">        if (inUse) {</span>
+<span class="fc" id="L241">            throw new ConflictException(&quot;Resource &quot; + resourceId</span>
+                    + &quot; is in use by a running job and cannot be deleted.&quot;);
+        }
+<span class="fc" id="L244">        resourceRepository.delete(resource);</span>
+<span class="fc" id="L245">        return new DeleteResourceResponse(resourceId);</span>
     }
     // END AI-generated
 
     private static void validateCores(final ResourceType type,
             final Integer cores) {
-<span class="fc bfc" id="L112" title="All 4 branches covered.">        if (type == ResourceType.CPU &amp;&amp; cores == null) {</span>
-<span class="fc" id="L113">            throw new InvalidRequestException(</span>
+<span class="fc bfc" id="L251" title="All 4 branches covered.">        if (type == ResourceType.CPU &amp;&amp; cores == null) {</span>
+<span class="fc" id="L252">            throw new InvalidRequestException(</span>
                     &quot;cores is required for CPU resources.&quot;);
         }
-<span class="fc bfc" id="L116" title="All 4 branches covered.">        if (type == ResourceType.GPU &amp;&amp; cores != null) {</span>
-<span class="fc" id="L117">            throw new InvalidRequestException(</span>
+<span class="fc bfc" id="L255" title="All 4 branches covered.">        if (type == ResourceType.GPU &amp;&amp; cores != null) {</span>
+<span class="fc" id="L256">            throw new InvalidRequestException(</span>
                     &quot;cores must not be set for GPU resources.&quot;);
         }
-<span class="fc" id="L120">    }</span>
+<span class="fc" id="L259">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
