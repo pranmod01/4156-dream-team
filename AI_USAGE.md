@@ -10,6 +10,7 @@ requires. Update it **at the end of every AI session**.
 | Claude Code (CLI) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Pranati Modumudi | Codebase orientation, design review, build/CI setup, project docs/scripts, PR review, endpoint implementation and tests |
 | Claude Code (VS Code extension) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Mahsa Mohajeripour | Job endpoint and dispatcher design, implementation and tests |
 | Claude (claude.ai app, chat) | Claude Opus 5.5 | Personal Anthropic account (claude.ai) | Rob Stott | Generating the V2 migration, the delete resource endpoint and its tests, and resolving its merge conflicts |
+| Claude Code | Claude Opus 5.5 | Not reported | Leila Erhili | Review fixes for the job queue (busy-resource check, RESOURCES_IN_USE), running the dispatcher before building the queue, and their tests |
 
 Add a row for any other tool (ChatGPT, Copilot, Cursor, Gemini, etc.).
 
@@ -355,3 +356,30 @@ script's formula on that folder's session log.)
 | 2026-10-20 to 2026-10-24 | Delete Resource endpoint and tests: service method, controller method, response DTO, README section, unit + API tests | "walk me through Delete Resource" | `dto/DeleteResourceResponse.java`; `deleteResource` in `service/ResourceService.java` and `controller/ResourceController.java`; README `DELETE /resources/{resourceId}`; `test/.../controller/DeleteResourceApiTest.java`; delete tests in `test/.../service/ResourceServiceTest.java` | Yes (#25) | 28 / 21,728 / 355,706 / 5,403,506 / **5,780,968** |
 | 2026-10-26 | Merge of main into the delete resource branch: resolved conflicts, updated the API test for the new `GET /resources` response, and added delete resource to the README's Call Order, Side Effects, Incorrect Usage, and Deviations sections | "walk me through fixing #25's conflicts" | `service/ResourceService.java`, `controller/ResourceController.java`, `test/.../service/ResourceServiceTest.java` (imports and class Javadoc); `test/.../controller/DeleteResourceApiTest.java`; `README.md` | Yes (#25) | 30 / 13,100 / 452,221 / 7,490,903 / **7,956,254** |
 | | | | | **Total** | 94 / 56,370 / 851,934 / 17,836,929 / **18,745,327** |
+
+### 2026-10-17 to 2026-10-22 — Leila Erhili — Claude Code / Claude Opus 5.5
+**Purpose:** Address review feedback on the job queue endpoint (PR #16) and
+keep the queue consistent with the dispatcher.
+
+**What the AI did (from commits `dd08a25`, `bb8a98e`):**
+- Made the job queue's blocked check exclude resources held by running jobs,
+  and added the `RESOURCES_IN_USE` blocked reason.
+- Changed the job queue to run the dispatcher before building its response,
+  and reused `JobRepository`'s busy-resource query.
+- Added unit and API tests for both changes.
+
+**Files generated / modified by AI (as marked in the code):**
+- `src/main/java/com/resourceallocator/dto/BlockedReason.java`:
+  `RESOURCES_IN_USE` (part)
+- `src/main/java/com/resourceallocator/repository/ResourceRepository.java`:
+  query method (part)
+- `src/main/java/com/resourceallocator/service/JobQueueService.java`:
+  busy-resource check (part)
+- `src/test/java/com/resourceallocator/service/JobQueueServiceTest.java`:
+  tests (part)
+- `src/test/java/com/resourceallocator/controller/ResourceAndJobQueueApiTest.java`:
+  tests (part)
+
+Her original endpoints (#7, #8, #10, commit `48da62c`) carry no AI markers.
+
+**Tokens:** Not reported.
