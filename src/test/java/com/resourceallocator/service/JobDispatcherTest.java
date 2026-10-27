@@ -201,6 +201,8 @@ class JobDispatcherTest {
         assertThat(newestCpu.getStatus()).isEqualTo(JobStatus.RUNNING);
     }
 
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    
     @Test
     void lockAndCheckResourceInUseLocksAndReportsHeldResource() {
         givenRunning();
@@ -226,6 +228,8 @@ class JobDispatcherTest {
                 .isFalse();
         assertThat(expired.getStatus()).isEqualTo(JobStatus.DONE);
     }
+
+    // End AI-generated
 
     private void givenRunning(final Job... jobs) {
         when(jobRepository
