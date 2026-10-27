@@ -163,6 +163,7 @@ class ResourceAndJobQueueApiTest {
                 .andExpect(jsonPath("$.online").value(false));
     }
 
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
     @Test
     void updateResourceHeldByRunningJobIsConflict() throws Exception {
         Resource gpu = resourceRepository.save(new Resource(
@@ -219,6 +220,8 @@ class ResourceAndJobQueueApiTest {
                 .andExpect(jsonPath("$.online").value(true));
     }
 
+    // End AI-Generated
+    
     @Test
     void updateResourceOfAnotherOrganizationIsNotFound() throws Exception {
         Resource foreign = resourceRepository.save(new Resource(

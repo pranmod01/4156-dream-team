@@ -14,7 +14,6 @@ requires. Update it **at the end of every AI session**.
 
 Add a row for any other tool (ChatGPT, Copilot, Cursor, Gemini, etc.).
 
-**No AI use:** Nick (`nlkeung`) did not use any AI tools on this project.
 
 ## Marking AI-generated code
 
@@ -41,14 +40,15 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 55,154,853 tokens** (as of 2026-10-26)
+**Grand total, all tools, all members: 61,328,310 tokens** (as of 2026-10-26)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
 | Claude Code | Pranati Modumudi | 486 | 183,272 | 638,738 | 25,044,865 | 25,867,361 |
 | Claude Code | Mahsa Mohajeripour | 138 | 82,749 | 584,120 | 9,875,158 | 10,542,165 |
 | Claude (claude.ai app) | Rob Stott | 94 | 56,370 | 851,934 | 17,836,929 | 18,745,327 |
-| **All** | | **718** | **322,391** | **2,074,792** | **52,756,952** | **55,154,853** |
+| Claude Code | Nicholas Keung | 196 | 71,161 | 315,766 | 5,786,334 | 6,173,457 |
+| **All** | | **914** | **393,552** | **2,390,558** | **58,543,286** | **61,328,310** |
 
 ### How to get your token counts
 
