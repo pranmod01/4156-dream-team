@@ -10,7 +10,7 @@ requires. Update it **at the end of every AI session**.
 | Claude Code (CLI) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Pranati Modumudi | Codebase orientation, design review, build/CI setup, project docs/scripts, PR review, endpoint implementation and tests |
 | Claude Code (VS Code extension) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Mahsa Mohajeripour | Job endpoint and dispatcher design, implementation and tests |
 | Claude (claude.ai app, chat) | Claude Opus 5.5 | Personal Anthropic account (claude.ai) | Rob Stott | Generating the V2 migration, the delete resource endpoint and its tests, and resolving its merge conflicts |
-| Claude Code | Claude Opus 5.5 | Not reported | Leila Erhili | Review fixes for the job queue (busy-resource check, RESOURCES_IN_USE), running the dispatcher before building the queue, and their tests |
+| Claude Code | Claude Opus 5.5 | Personal Anthropic account (claude.ai) | Leila Erhili | Review fixes for the job queue (busy-resource check, RESOURCES_IN_USE), running the dispatcher before building the queue, and their tests |
 
 Add a row for any other tool (ChatGPT, Copilot, Cursor, Gemini, etc.).
 
