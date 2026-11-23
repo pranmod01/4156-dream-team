@@ -8,7 +8,7 @@ requires. Update it **at the end of every AI session**.
 | Tool | Model(s) | How we got it | Used by | What we used it for |
 |---|---|---|---|---|
 | Claude Code (CLI) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Pranati Modumudi | Codebase orientation, design review, build/CI setup, project docs/scripts, PR review, endpoint implementation and tests |
-| Claude Code (VS Code extension) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Mahsa Mohajeripour | Job endpoint and dispatcher design, implementation and tests |
+| Claude Code (VS Code extension) | Claude Opus 5.5 (`claude-opus-5-5`) | Personal Anthropic account (claude.ai) | Mahsa Mohajeri | Job endpoint and dispatcher design, implementation and tests; PostgreSQL integration tests |
 | Claude (claude.ai app, chat) | Claude Opus 5.5 | Personal Anthropic account (claude.ai) | Rob Stott | Generating the V2 migration, the delete resource endpoint and its tests, and resolving its merge conflicts |
 | Claude Code | Claude Opus 5.5 | Personal Anthropic account (claude.ai) | Leila Erhili | Review fixes for the job queue (busy-resource check, RESOURCES_IN_USE), running the dispatcher before building the queue, and their tests |
 
@@ -40,15 +40,15 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 61,328,310 tokens** (as of 2026-10-26)
+**Grand total, all tools, all members: 65,229,480 tokens** (as of 2026-10-26; Mahsa's row updated 2026-11-23)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
 | Claude Code | Pranati Modumudi | 486 | 183,272 | 638,738 | 25,044,865 | 25,867,361 |
-| Claude Code | Mahsa Mohajeripour | 138 | 82,749 | 584,120 | 9,875,158 | 10,542,165 |
+| Claude Code | Mahsa Mohajeri | 230 | 129,000 | 842,572 | 13,471,533 | 14,443,335 |
 | Claude (claude.ai app) | Rob Stott | 94 | 56,370 | 851,934 | 17,836,929 | 18,745,327 |
 | Claude Code | Nicholas Keung | 196 | 71,161 | 315,766 | 5,786,334 | 6,173,457 |
-| **All** | | **914** | **393,552** | **2,390,558** | **58,543,286** | **61,328,310** |
+| **All** | | **1,006** | **439,803** | **2,649,010** | **62,139,661** | **65,229,480** |
 
 ### How to get your token counts
 
@@ -281,7 +281,7 @@ coverage.
 **Tokens:** 238 / 96,938 / 352,117 / 15,390,971 / **15,840,264** (final, from
 `./scripts/ai-token-usage.sh 5c52e294-7473-4cde-ad13-ef2edb65b609`).
 
-### 2026-10-19 — Mahsa Mohajeripour — Claude Code / Claude Opus 5.5
+### 2026-10-19 — Mahsa Mohajeri — Claude Code / Claude Opus 5.5
 **Session ID:** `c4a5740c-c79d-434b-908c-751f243c929c`
 **Purpose:** Implement my endpoints: add job (#3), get job status (#4), and
 delete job (#5).
@@ -381,3 +381,46 @@ keep the queue consistent with the dispatcher.
   tests (part)
 
 Her original endpoints (#7, #8, #10, commit `48da62c`) carry no AI markers.
+
+### 2026-11-23 — Mahsa Mohajeri — Claude Code / Claude Opus 5.5
+**Session ID:** `ff141416-53be-40fc-8fb7-5e0869cd7d86`
+**Purpose:** Add integration tests (#35).
+
+**Requests (summary):**
+- Explain what the integration-test issue needs and whether it depends on
+  the other open issues.
+- Help get Docker Desktop working locally.
+- Set up integration tests against a real PostgreSQL and write them.
+
+**What the AI did:**
+- Added Testcontainers and the Maven Failsafe plugin, so `*IT` classes run
+  in `./mvnw verify` against PostgreSQL 16 in Docker, while `./mvnw test`
+  stays H2-only.
+- Wrote 18 integration tests: Flyway migrations, constraints, and the V2
+  cascade on PostgreSQL; end-to-end job lifecycle and client isolation over
+  real HTTP; and concurrency tests for the dispatcher's organization lock.
+  Delete-job tests wait for #37.
+- Checked the concurrency tests can fail: with the organization lock
+  temporarily removed, 3 of the 4 failed. The change was reverted.
+- Updated the README testing section and proposal-deviation note, and CI
+  uploads the failsafe reports.
+
+**Files generated / modified by AI:**
+- `src/test/java/com/resourceallocator/integration/PostgresIntegrationTest.java`: new, whole file
+- `src/test/java/com/resourceallocator/integration/PostgresSchemaIT.java`: new, whole file
+- `src/test/java/com/resourceallocator/integration/JobLifecycleIT.java`: new, whole file
+- `src/test/java/com/resourceallocator/integration/ClientIsolationIT.java`: new, whole file
+- `src/test/java/com/resourceallocator/integration/ConcurrencyIT.java`: new, whole file
+- `pom.xml`: Testcontainers dependencies and Failsafe plugin (part)
+- `.github/workflows/ci.yml`: failsafe report upload (part)
+- `README.md`: Build/Tests section and the testing deviation note (part)
+- `AI_USAGE.md`: this entry and my row in the tools table (part)
+
+**How we used/checked the output:** Ran `./mvnw clean verify` locally:
+152/152 tests pass (18 new integration tests), 0 Checkstyle and PMD
+violations.
+**Tokens:** 92 / 46,251 / 258,452 / 3,596,375 / **3,901,170** (measured
+2026-11-23 near the end of the session. The session was started from the
+parent folder `~/Projects/dream-team`, so `./scripts/ai-token-usage.sh`
+doesn't find it; these counts use the script's formula on that folder's
+session log.)

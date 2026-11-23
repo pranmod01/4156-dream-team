@@ -36,4 +36,5 @@ jobs:
             target/checkstyle-result.xml
             target/pmd.xml
             target/surefire-reports/
+            target/failsafe-reports/
           if-no-files-found: ignore
