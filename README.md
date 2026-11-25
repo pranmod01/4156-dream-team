@@ -36,8 +36,8 @@ NOTE: dev_password is for local use only. Do not expose your Postgres to externa
 ## Build, Test, and Style Checks
 Use the Maven wrapper (`./mvnw`, or `mvnw.cmd` on Windows) to automatically download and use this project's configured Maven version.
 
-- `./mvnw verify` runs everything CI runs: Checkstyle, tests, the JaCoCo coverage report, and PMD. The build fails on any Checkstyle or PMD violation.
-- `./mvnw test` runs the tests only (tests use an in-memory H2 database, so Postgres isn't needed).
+- `./mvnw verify` runs everything CI runs: Checkstyle, unit and API tests, the JaCoCo coverage report, integration tests, and PMD. The build fails on any Checkstyle or PMD violation. Integration tests need Docker running (see [Tests](#tests)).
+- `./mvnw test` runs the unit and API tests only (they use an in-memory H2 database, so neither Postgres nor Docker is needed).
 - `./mvnw checkstyle:check` / `./mvnw pmd:check` run one style tool on its own.
 
 Reports:
@@ -51,6 +51,10 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
 Tests use JUnit 5 and run through Maven Surefire with `./mvnw test`.
 - **Unit tests** (`src/test/java/com/resourceallocator/service/`) test each service on its own, using Mockito mocks for the repositories and the dispatcher.
 - **API tests** (`src/test/java/com/resourceallocator/controller/`) send HTTP requests to every endpoint through Spring MockMvc, running against the full application with an in-memory H2 database.
+- **Integration tests** (`src/test/java/com/resourceallocator/integration/`, classes named `*IT`) start the whole application on a real port against a real PostgreSQL 16 database, which Testcontainers runs in Docker, and nothing is mocked. They run through Maven Failsafe in `./mvnw verify`; to run only them, use `./mvnw verify -Dtest=NoSuchTest -Dsurefire.failIfNoSpecifiedTests=false`. Docker must be running locally (CI's runners already have it).
+    - *External integration with PostgreSQL* (`PostgresSchemaIT`): the Flyway migrations apply on PostgreSQL, the schema's check and foreign-key constraints are enforced, and the V2 cascade removes a deleted resource's job assignments.
+    - *Internal integration, end to end* (`JobLifecycleIT`, `ClientIsolationIT`): a client registers, adds resources and runs jobs through the HTTP API, and each endpoint sees the others' effects (job placement and queueing, blocked reasons, usage limits, resources taken offline, and jobs starting when leases end). The API key issued by `POST /clients` works on every endpoint, only for its own organization.
+    - *Concurrency* (`ConcurrencyIT`): parallel requests rely on PostgreSQL row locks, which H2 does not reproduce. Parallel job submissions never double-book a resource or exceed the usage limit, taking a GPU offline while a job is submitted never leaves the job on an offline GPU, and parallel registrations of one name create one organization.
 
 ### Style Checkers
 - **Checkstyle 12.3.1**, configured by `checkstyle.xml`. It is Checkstyle's Sun ruleset (`sun_checks.xml`) with these changes:
@@ -454,4 +458,4 @@ When the request body fails validation, the response also includes an `errors` l
 - **Get Job Status (`GET /jobs/{jobId}`)** returns `404 Not Found` for an unknown job instead of the proposed `400 Bad Request`, to match Delete Job and Update Resource.
 - **Update Resource (`PATCH /resources/{resourceId}`)** returns `404 Not Found` for an unknown resource instead of the proposed `400 Bad Request`, to match Delete Job and the usual meaning of the status codes. It also returns `409 Conflict` when taking a resource offline while a running job holds it, which the proposal did not cover, so that a running job never loses its resource.
 - **Delete Resource (`DELETE /resources/{resourceId}`)** refuses only resources held by a running job. The proposal also protected resources "reserved for a future job", but there are no reservations, so that case can't occur.
-- **Testing and tooling:** the proposal listed Testcontainers with PostgreSQL for integration tests, and Docker. Instead, the API tests run the full application against an in-memory H2 database, so the test suite and CI need neither Docker nor a running database. The database schema is still created by the same Flyway migrations. There is no Dockerfile; the app is run with `./mvnw spring-boot:run` against a local PostgreSQL.
+- **Testing and tooling:** as proposed, integration tests use Testcontainers with PostgreSQL in Docker. The unit and API tests use an in-memory H2 database instead, so `./mvnw test` needs neither Docker nor a running database. There is no Dockerfile yet; the app is run with `./mvnw spring-boot:run` against a local PostgreSQL.
