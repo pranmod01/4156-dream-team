@@ -12,6 +12,7 @@ import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.repository.JobRepository;
+import com.resourceallocator.repository.OrganizationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,16 +30,22 @@ public class JobService {
     /** Starts queued jobs and finishes expired ones. */
     private final JobDispatcher jobDispatcher;
 
+    /** Locks the organization while a job is submitted. */
+    private final OrganizationRepository organizationRepository;
+
     /**
      * Creates the service.
      *
      * @param jobRepository repository used to persist jobs
      * @param jobDispatcher dispatcher that updates job states
+     * @param organizationRepository repository used to lock organizations
      */
     public JobService(final JobRepository jobRepository,
-            final JobDispatcher jobDispatcher) {
+            final JobDispatcher jobDispatcher,
+            final OrganizationRepository organizationRepository) {
         this.jobRepository = jobRepository;
         this.jobDispatcher = jobDispatcher;
+        this.organizationRepository = organizationRepository;
     }
 
     /**
@@ -60,7 +67,16 @@ public class JobService {
     public JobResponse addJob(final Organization organization,
             final AddJobRequest request) {
         validateCores(request.resourceType(), request.minCores());
-        int limit = usageLimit(organization, request.resourceType());
+        // AI-edited (Claude Code, Claude Opus 5.5): lock before checking
+        // Lock the organization before inserting the job, and check the
+        // limit on the locked row rather than the copy loaded during
+        // authentication. A concurrent limit change then cannot slip a job
+        // past a lowered limit.
+        Organization locked = organizationRepository
+                .findByIdForUpdate(organization.getId())
+                .orElseThrow(() -> new NotFoundException("Organization "
+                        + organization.getId() + " was not found."));
+        int limit = usageLimit(locked, request.resourceType());
         if (request.unitsRequested() > limit) {
             throw new InvalidRequestException("unitsRequested exceeds the "
                     + "organization's " + request.resourceType()

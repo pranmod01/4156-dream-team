@@ -4,6 +4,7 @@ package com.resourceallocator.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.repository.JobRepository;
+import com.resourceallocator.repository.OrganizationRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,16 +41,24 @@ class JobServiceTest {
     @Mock
     private JobDispatcher jobDispatcher;
 
+    @Mock
+    private OrganizationRepository organizationRepository;
+
     private JobService service;
 
     private Organization organization;
 
     @BeforeEach
     void setUp() {
-        service = new JobService(jobRepository, jobDispatcher);
+        service = new JobService(jobRepository, jobDispatcher,
+                organizationRepository);
         // Limits: 4 CPUs, 2 GPUs.
         organization = new Organization("acme", "hash", 4, 2);
         ReflectionTestUtils.setField(organization, "id", ORG_ID);
+        // AI-edited (Claude Code, Claude Opus 5.5): addJob locks the org.
+        // Lenient because only addJob tests that pass validation use it.
+        lenient().when(organizationRepository.findByIdForUpdate(ORG_ID))
+                .thenReturn(Optional.of(organization));
     }
 
     @Test
@@ -92,6 +102,24 @@ class JobServiceTest {
                 .hasMessageContaining("limit of 2");
         verify(jobRepository, never()).saveAndFlush(any());
     }
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    @Test
+    void addJobChecksTheLimitOnTheLockedRow() {
+        // A concurrent request lowered the GPU limit to 1 after this
+        // request authenticated with the old limit of 2.
+        Organization locked = new Organization("acme", "hash", 4, 1);
+        ReflectionTestUtils.setField(locked, "id", ORG_ID);
+        when(organizationRepository.findByIdForUpdate(ORG_ID))
+                .thenReturn(Optional.of(locked));
+
+        assertThatThrownBy(() -> service.addJob(organization,
+                new AddJobRequest(ResourceType.GPU, 2, 40, null, 1)))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("limit of 1");
+        verify(jobRepository, never()).saveAndFlush(any());
+    }
+    // END AI-generated
 
     @Test
     void addJobRejectsCpuJobWithoutCores() {

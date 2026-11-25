@@ -4,20 +4,32 @@ package com.resourceallocator.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.resourceallocator.auth.ApiKeyHasher;
 import com.resourceallocator.dto.CreateClientRequest;
+import com.resourceallocator.dto.ClientResponse;
 import com.resourceallocator.dto.CreateClientResponse;
+import com.resourceallocator.dto.UpdateClientLimitsRequest;
 import com.resourceallocator.exception.ConflictException;
+import com.resourceallocator.exception.InvalidRequestException;
+import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
+import com.resourceallocator.model.ResourceType;
+import com.resourceallocator.repository.JobRepository;
 import com.resourceallocator.repository.OrganizationRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,11 +41,18 @@ class ClientServiceTest {
     @Mock
     private OrganizationRepository organizationRepository;
 
+    @Mock
+    private JobRepository jobRepository;
+
+    @Mock
+    private JobDispatcher jobDispatcher;
+
     private ClientService clientService;
 
     @BeforeEach
     void setUp() {
-        clientService = new ClientService(organizationRepository);
+        clientService = new ClientService(organizationRepository,
+                jobRepository, jobDispatcher);
     }
 
     @Test
@@ -104,6 +123,105 @@ class ClientServiceTest {
         assertThatThrownBy(() -> clientService.createClient(request))
                 .isInstanceOf(ConflictException.class);
     }
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    @Test
+    void updateLimitsChangesGivenLimitAndKeepsTheOther() {
+        Organization locked = lockedOrganization(8, 2);
+
+        ClientResponse response = clientService.updateLimits(
+                detachedCopy(), new UpdateClientLimitsRequest(16, null));
+
+        assertThat(response.maxCpus()).isEqualTo(16);
+        assertThat(response.maxGpus()).isEqualTo(2);
+        assertThat(locked.getMaxCpus()).isEqualTo(16);
+        assertThat(locked.getMaxGpus()).isEqualTo(2);
+    }
+
+    @Test
+    void updateLimitsReadsCurrentValuesFromTheLockedRow() {
+        // The locked row has GPU limit 5, though the copy from
+        // authentication still says 2; the omitted GPU limit keeps 5.
+        lockedOrganization(8, 5);
+
+        ClientResponse response = clientService.updateLimits(
+                detachedCopy(), new UpdateClientLimitsRequest(1, null));
+
+        assertThat(response.maxGpus()).isEqualTo(5);
+    }
+
+    @Test
+    void updateLimitsLocksThenSavesThenDispatches() {
+        lockedOrganization(8, 2);
+
+        clientService.updateLimits(detachedCopy(),
+                new UpdateClientLimitsRequest(4, 4));
+
+        InOrder order = inOrder(organizationRepository, jobDispatcher);
+        order.verify(organizationRepository).findByIdForUpdate(3L);
+        order.verify(organizationRepository).flush();
+        order.verify(jobDispatcher).dispatch(3L);
+    }
+
+    @Test
+    void updateLimitsRequiresAtLeastOneLimit() {
+        UpdateClientLimitsRequest request =
+                new UpdateClientLimitsRequest(null, null);
+
+        assertThatThrownBy(() ->
+                clientService.updateLimits(detachedCopy(), request))
+                .isInstanceOf(InvalidRequestException.class);
+        verify(organizationRepository, never()).findByIdForUpdate(any());
+        verify(jobDispatcher, never()).dispatch(anyLong());
+    }
+
+    @Test
+    void updateLimitsRejectsLimitBelowAQueuedJob() {
+        Organization locked = lockedOrganization(8, 2);
+        when(jobRepository.existsWithMoreUnitsThan(eq(3L),
+                eq(JobStatus.QUEUED), any(ResourceType.class), anyInt()))
+                .thenAnswer(invocation ->
+                        invocation.getArgument(2) == ResourceType.GPU
+                                && (int) invocation.getArgument(3) == 1);
+        UpdateClientLimitsRequest request =
+                new UpdateClientLimitsRequest(null, 1);
+
+        assertThatThrownBy(() ->
+                clientService.updateLimits(detachedCopy(), request))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("GPU");
+        assertThat(locked.getMaxGpus()).isEqualTo(2);
+        verify(jobDispatcher, never()).dispatch(anyLong());
+    }
+
+    @Test
+    void updateLimitsChecksQueuedJobsAgainstTheNewLimits() {
+        lockedOrganization(8, 2);
+
+        clientService.updateLimits(detachedCopy(),
+                new UpdateClientLimitsRequest(3, null));
+
+        verify(jobRepository).existsWithMoreUnitsThan(
+                eq(3L), eq(JobStatus.QUEUED), eq(ResourceType.CPU), eq(3));
+        verify(jobRepository).existsWithMoreUnitsThan(
+                eq(3L), eq(JobStatus.QUEUED), eq(ResourceType.GPU), anyInt());
+    }
+
+    // The row that findByIdForUpdate returns, with the given limits.
+    private Organization lockedOrganization(final int maxCpus,
+            final int maxGpus) {
+        Organization locked = withId(
+                new Organization("acme", "hash", maxCpus, maxGpus), 3L);
+        when(organizationRepository.findByIdForUpdate(3L))
+                .thenReturn(Optional.of(locked));
+        return locked;
+    }
+
+    // The copy loaded during authentication, possibly out of date.
+    private static Organization detachedCopy() {
+        return withId(new Organization("acme", "hash", 8, 2), 3L);
+    }
+    // END AI-generated
 
     private static Organization withId(final Organization organization,
             final long id) {

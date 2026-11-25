@@ -2,6 +2,7 @@ package com.resourceallocator.repository;
 
 import com.resourceallocator.model.Job;
 import com.resourceallocator.model.JobStatus;
+import com.resourceallocator.model.ResourceType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -112,5 +113,27 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             """, nativeQuery = true)
     List<Object[]> findRunningAssignments(
             @Param("organizationId") Long organizationId);
+    // END AI-generated
+
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Checks whether the organization has a job in the given status that
+     * requests more units of a resource type than the given number.
+     *
+     * @param organizationId the organization
+     * @param status the job status to look at
+     * @param resourceType the resource type
+     * @param units the number of units to compare against
+     * @return {@code true} if such a job exists
+     */
+    @Query("SELECT COUNT(j) > 0 FROM Job j "
+            + "WHERE j.organizationId = :organizationId "
+            + "AND j.status = :status AND j.resourceType = :resourceType "
+            + "AND j.unitsRequested > :units")
+    boolean existsWithMoreUnitsThan(
+            @Param("organizationId") Long organizationId,
+            @Param("status") JobStatus status,
+            @Param("resourceType") ResourceType resourceType,
+            @Param("units") int units);
     // END AI-generated
 }
