@@ -5,7 +5,8 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Requires an API key on every job and resource endpoint.
+ * Requires an API key on every job and resource endpoint, and on
+ * {@code /clients/me}. Registration ({@code POST /clients}) stays open.
  */
 @Configuration
 public class ApiKeyAuthConfig implements WebMvcConfigurer {
@@ -23,7 +24,7 @@ public class ApiKeyAuthConfig implements WebMvcConfigurer {
     }
 
     /**
-     * Registers the API key check for job and resource endpoints.
+     * Registers the API key check for the protected endpoints.
      *
      * @param registry the interceptor registry
      */
@@ -31,6 +32,8 @@ public class ApiKeyAuthConfig implements WebMvcConfigurer {
     public void addInterceptors(final InterceptorRegistry registry) {
         registry.addInterceptor(apiKeyAuthInterceptor)
                 .addPathPatterns("/jobs", "/jobs/**",
-                        "/resources", "/resources/**");
+                        "/resources", "/resources/**",
+                        // AI-edited (Claude Code, Claude Opus 5.5)
+                        "/clients/me");
     }
 }

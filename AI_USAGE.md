@@ -40,15 +40,15 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 65,229,480 tokens** (as of 2026-10-26; Mahsa's row updated 2026-11-23)
+**Grand total, all tools, all members: 73,730,331 tokens** (as of 2026-11-24)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
-| Claude Code | Pranati Modumudi | 486 | 183,272 | 638,738 | 25,044,865 | 25,867,361 |
+| Claude Code | Pranati Modumudi | 638 | 259,477 | 797,757 | 33,310,340 | 34,368,212 |
 | Claude Code | Mahsa Mohajeri | 230 | 129,000 | 842,572 | 13,471,533 | 14,443,335 |
 | Claude (claude.ai app) | Rob Stott | 94 | 56,370 | 851,934 | 17,836,929 | 18,745,327 |
 | Claude Code | Nicholas Keung | 196 | 71,161 | 315,766 | 5,786,334 | 6,173,457 |
-| **All** | | **1,006** | **439,803** | **2,649,010** | **62,139,661** | **65,229,480** |
+| **All** | | **1,158** | **516,008** | **2,808,029** | **70,405,136** | **73,730,331** |
 
 ### How to get your token counts
 
@@ -280,6 +280,59 @@ approved by Pranati Modumudi before it was made. Ran `./mvnw clean verify`:
 coverage.
 **Tokens:** 238 / 96,938 / 352,117 / 15,390,971 / **15,840,264** (final, from
 `./scripts/ai-token-usage.sh 5c52e294-7473-4cde-ad13-ef2edb65b609`).
+
+### 2026-11-24 — Pranati Modumudi — Claude Code / Claude Opus 5.5
+**Session ID:** `3c793557-e48a-4173-aac0-30036a4c39ee`
+**Purpose:** Let registered clients change their usage limits without
+conflicting with dispatches that are running at the same time.
+
+**Requests (summary):**
+- Allow clients to change `maxCpus`/`maxGpus` after registering.
+- Make sure a lowered limit doesn't break running jobs or concurrent
+  dispatches.
+- Add unit and API tests.
+- Run the static analysis bug finder (PMD) and style checker
+  (Checkstyle), check whether main's new integration tests conflict, and
+  bring the work up to date with main.
+- Commit the feature and the class tests on separate branches (class
+  tests are logged on the class-tests branch).
+
+**What the AI did:**
+- Added `PATCH /clients/me` (API key required). It locks the organization
+  row (the same lock every dispatch takes), rejects with `409` a limit
+  below a queued job's request, saves the new limits, then runs the
+  dispatcher so a raised limit starts waiting jobs at once. Running jobs
+  are never stopped.
+- Changed `POST /jobs` to lock the organization before inserting the job
+  and to check the limit on the locked row, not the copy loaded during
+  authentication. This closes a race with limit changes.
+- Added unit and API tests, documented the endpoint in the README, and
+  ran `./mvnw verify` (all tests and Checkstyle pass).
+- Ran PMD and Checkstyle: no findings on main code. Over test code
+  (not checked by the build), PMD found nothing and Checkstyle found only
+  missing Javadoc on test fields and test packages.
+- Trial-merged onto main's integration tests: only this file conflicted.
+  Pulled main and resolved it. The integration tests need Docker, which
+  was not available locally, so they were left to CI.
+
+**Files generated / modified by AI (as marked in the code):**
+- `src/main/java/com/resourceallocator/dto/UpdateClientLimitsRequest.java` (new)
+- `src/main/java/com/resourceallocator/dto/ClientResponse.java` (new)
+- `src/main/java/com/resourceallocator/service/ClientService.java`
+- `src/main/java/com/resourceallocator/controller/ClientController.java`
+- `src/main/java/com/resourceallocator/service/JobService.java`
+- `src/main/java/com/resourceallocator/model/Organization.java`: `setLimits` (part)
+- `src/main/java/com/resourceallocator/repository/JobRepository.java`:
+  `existsWithMoreUnitsThan` (part)
+- `src/main/java/com/resourceallocator/auth/ApiKeyAuthConfig.java`:
+  `/clients/me` path (part)
+- `src/test/java/com/resourceallocator/service/ClientServiceTest.java`
+- `src/test/java/com/resourceallocator/service/JobServiceTest.java`
+- `src/test/java/com/resourceallocator/controller/ClientApiTest.java`
+- `README.md`: `PATCH /clients/me` section, side-effects note
+
+**Tokens:** 152 input / 76,205 output / 159,019 cache write / 8,265,475
+cache read / **8,500,851 total**
 
 ### 2026-10-19 — Mahsa Mohajeri — Claude Code / Claude Opus 5.5
 **Session ID:** `c4a5740c-c79d-434b-908c-751f243c929c`

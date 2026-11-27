@@ -1,6 +1,6 @@
 # Resource Allocator API
 
-This project implements a simple resource allocation service. Organizations can register with the service, list the available resources (CPUs and GPUs), set usage limits, and take specific resources offline. Other clients can then request specific resources for their jobs, and the job will be added to the queue. 
+This project implements a simple resource allocation service. Organizations can register with the service, list the available resources (CPUs and GPUs), set and change usage limits, and take specific resources offline. Other clients can then request specific resources for their jobs, and the job will be added to the queue. 
 
 ## Project Management
 Tasks are tracked as GitHub Issues, each assigned to the team member responsible:
@@ -83,7 +83,7 @@ cp target/checkstyle-result.xml target/pmd.xml reports/
 ## Using the API
 
 ### Authentication
-`POST /clients` is the only endpoint that does not need authentication. It returns an `apiKey`, which must be sent in the `X-API-Key` header on every `/jobs` and `/resources` request. The key is shown only once: the server stores only its SHA-256 hash, so a lost key cannot be recovered. A missing or unknown key returns `401` before the request body is validated.
+`POST /clients` is the only endpoint that does not need authentication. It returns an `apiKey`, which must be sent in the `X-API-Key` header on every `/jobs`, `/resources` and `PATCH /clients/me` request. The key is shown only once: the server stores only its SHA-256 hash, so a lost key cannot be recovered. A missing or unknown key returns `401` before the request body is validated.
 
 Each organization sees and uses only its own resources and jobs. Asking for another organization's job or resource by ID behaves as if it does not exist.
 
@@ -100,6 +100,7 @@ Each organization sees and uses only its own resources and jobs. Asking for anot
 - It also runs in the background every 30 seconds for each organization with unfinished jobs (set with `dispatcher.interval-ms`).
 - `POST /resources`, `PATCH /resources/{resourceId}`, and `DELETE /resources/{resourceId}` do **not** start queued jobs. A newly added or re-enabled resource is picked up on the next `/jobs` request or background run. When taking a resource offline or deleting it, the server first locks the organization (so no dispatch can assign the resource meanwhile) and marks jobs whose lease has expired as `DONE`, so a resource whose job just finished can be taken offline or deleted.
 - **Usage limits:** `maxCpus`/`maxGpus` cap the units an organization's *running* jobs hold at once. A job asking for more than the limit is rejected with `400`. A job within the limit that would push the running total over it waits in the queue (`blockedReason: EXCEEDS_USAGE_LIMIT`).
+- **Changing limits** (`PATCH /clients/me`) locks the organization the same way a dispatch does, so it never takes effect halfway through one. Running jobs are never stopped: after a limit is lowered, jobs already running keep their resources until their leases end, and no new job of that type starts until usage drops below the new limit. A raised limit takes effect at once, since the dispatcher runs as part of the request.
 - **Queue order:** queued jobs are tried oldest first, but scheduling is not strict first-come-first-served. If the oldest job can't start, a newer job that fits may start ahead of it.
 - **Deleting a job** also deletes its resource assignments.
 - **Deleting a resource** also deletes its assignments to finished jobs. A resource held by a running job can't be deleted.
@@ -202,6 +203,35 @@ When the request body fails validation, the response also includes an `errors` l
     }
     ```
     - `409 Conflict` -- Returns conflict if the name is not unique
+
+### PATCH /clients/me
+- Changes the caller's usage limits. Needs the `X-API-Key` header. Either limit can be left out to keep its current value.
+- Request Body:
+    ```
+    {
+        "maxCpus": 8,
+        "maxGpus": 1
+    }
+    ```
+    - maxCpus (integer, optional): New CPU usage limit. Must be nonnegative.
+    - maxGpus (integer, optional): New GPU usage limit. Must be nonnegative.
+- Behavior:
+    - Running jobs are not stopped. If the new limit is below what running jobs already hold, they finish normally and queued jobs of that type wait (`blockedReason: EXCEEDS_USAGE_LIMIT`) until usage drops below the new limit.
+    - After the change the dispatcher runs, so queued jobs that a raised limit now allows start right away.
+- Responses:
+    - `200 OK` -- Returns the organization with its updated limits (no API key).
+    ```
+    {
+        "id": 1,
+        "orgName": "name",
+        "maxCpus": 8,
+        "maxGpus": 1,
+        "createdAt": "2026-10-22T01:19:54.460571Z"
+    }
+    ```
+    - `400 Bad Request` -- Neither limit is given, or a limit is negative.
+    - `401 Unauthorized` -- The API key is missing or unknown.
+    - `409 Conflict` -- A queued job requests more units than the new limit, so it could never run. Delete that job first, or choose a higher limit.
 
 
 ### POST /jobs

@@ -110,6 +110,21 @@ public class Organization {
         return maxGpus;
     }
 
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Replaces the organization's usage limits. Running jobs are not
+     * affected; the new limits apply to the next jobs the dispatcher
+     * starts.
+     *
+     * @param newMaxCpus maximum CPU units the organization may use at once
+     * @param newMaxGpus maximum GPU units the organization may use at once
+     */
+    public void setLimits(final int newMaxCpus, final int newMaxGpus) {
+        this.maxCpus = newMaxCpus;
+        this.maxGpus = newMaxGpus;
+    }
+    // END AI-generated
+
     /**
      * Returns when the organization was registered.
      *
