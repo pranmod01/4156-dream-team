@@ -50,6 +50,7 @@ CI (`.github/workflows/ci.yml`) runs `./mvnw verify` on JDK 17 for every push an
 ### Tests
 Tests use JUnit 5 and run through Maven Surefire with `./mvnw test`.
 - **Unit tests** (`src/test/java/com/resourceallocator/service/`) test each service on its own, using Mockito mocks for the repositories and the dispatcher.
+- **Class tests** (`*ClassTest.java` in `src/test/java/com/resourceallocator/service/`) call a service's methods one after another, with its real repositories and dispatcher against the in-memory H2 database, and check that state carries over correctly between calls. They cover `ClientService`, `JobService`, `ResourceService`, `JobQueueService` and `JobDispatcher`.
 - **API tests** (`src/test/java/com/resourceallocator/controller/`) send HTTP requests to every endpoint through Spring MockMvc, running against the full application with an in-memory H2 database.
 - **Integration tests** (`src/test/java/com/resourceallocator/integration/`, classes named `*IT`) start the whole application on a real port against a real PostgreSQL 16 database, which Testcontainers runs in Docker, and nothing is mocked. They run through Maven Failsafe in `./mvnw verify`; to run only them, use `./mvnw verify -Dtest=NoSuchTest -Dsurefire.failIfNoSpecifiedTests=false`. Docker must be running locally (CI's runners already have it).
     - *External integration with PostgreSQL* (`PostgresSchemaIT`): the Flyway migrations apply on PostgreSQL, the schema's check and foreign-key constraints are enforced, and the V2 cascade removes a deleted resource's job assignments.

@@ -290,12 +290,12 @@ conflicting with dispatches that are running at the same time.
 - Allow clients to change `maxCpus`/`maxGpus` after registering.
 - Make sure a lowered limit doesn't break running jobs or concurrent
   dispatches.
-- Add unit and API tests.
+- Add unit, API and class tests; class tests for every non-trivial
+  class with several methods.
 - Run the static analysis bug finder (PMD) and style checker
   (Checkstyle), check whether main's new integration tests conflict, and
   bring the work up to date with main.
-- Commit the feature and the class tests on separate branches (class
-  tests are logged on the class-tests branch).
+- Commit the feature and the class tests on separate branches.
 
 **What the AI did:**
 - Added `PATCH /clients/me` (API key required). It locks the organization
@@ -306,6 +306,9 @@ conflicting with dispatches that are running at the same time.
 - Changed `POST /jobs` to lock the organization before inserting the job
   and to check the limit on the locked row, not the copy loaded during
   authentication. This closes a race with limit changes.
+- Added class tests (methods called in sequence against the H2 database)
+  for `ClientService`, `JobService`, `ResourceService`, `JobQueueService`
+  and `JobDispatcher`.
 - Added unit and API tests, documented the endpoint in the README, and
   ran `./mvnw verify` (all tests and Checkstyle pass).
 - Ran PMD and Checkstyle: no findings on main code. Over test code
@@ -329,7 +332,12 @@ conflicting with dispatches that are running at the same time.
 - `src/test/java/com/resourceallocator/service/ClientServiceTest.java`
 - `src/test/java/com/resourceallocator/service/JobServiceTest.java`
 - `src/test/java/com/resourceallocator/controller/ClientApiTest.java`
-- `README.md`: `PATCH /clients/me` section, side-effects note
+- `src/test/java/com/resourceallocator/service/ClientServiceClassTest.java` (new)
+- `src/test/java/com/resourceallocator/service/JobServiceClassTest.java` (new)
+- `src/test/java/com/resourceallocator/service/ResourceServiceClassTest.java` (new)
+- `src/test/java/com/resourceallocator/service/JobQueueServiceClassTest.java` (new)
+- `src/test/java/com/resourceallocator/service/JobDispatcherClassTest.java` (new)
+- `README.md`: `PATCH /clients/me` section, side-effects note, class tests
 
 **Tokens:** 152 input / 76,205 output / 159,019 cache write / 8,265,475
 cache read / **8,500,851 total**
