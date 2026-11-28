@@ -17,5 +17,17 @@ public class ConflictException extends RuntimeException {
     public ConflictException(final String message) {
 <span class="fc" id="L18">        super(message);</span>
 <span class="fc" id="L19">    }</span>
+
+    // AI-generated (Claude Code, Claude Opus 5.5): keeps the cause (PMD
+    // PreserveStackTrace)
+    /**
+     * Creates the exception, keeping the exception that caused it.
+     *
+     * @param message explanation returned to the client
+     * @param cause the underlying exception, kept for logs and debugging
+     */
+    public ConflictException(final String message, final Throwable cause) {
+<span class="fc" id="L30">        super(message, cause);</span>
+<span class="fc" id="L31">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

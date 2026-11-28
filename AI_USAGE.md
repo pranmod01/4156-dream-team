@@ -40,15 +40,15 @@ we edited it by hand afterwards.
 
 ## Token totals
 
-**Grand total, all tools, all members: 73,730,331 tokens** (as of 2026-11-24)
+**Grand total, all tools, all members: 78,074,245 tokens** (as of 2026-11-27)
 
 | Tool | Member | Input | Output | Cache write | Cache read | Total |
 |---|---|---:|---:|---:|---:|---:|
 | Claude Code | Pranati Modumudi | 638 | 259,477 | 797,757 | 33,310,340 | 34,368,212 |
-| Claude Code | Mahsa Mohajeri | 230 | 129,000 | 842,572 | 13,471,533 | 14,443,335 |
+| Claude Code | Mahsa Mohajeri | 348 | 167,721 | 997,933 | 17,621,247 | 18,787,249 |
 | Claude (claude.ai app) | Rob Stott | 94 | 56,370 | 851,934 | 17,836,929 | 18,745,327 |
 | Claude Code | Nicholas Keung | 196 | 71,161 | 315,766 | 5,786,334 | 6,173,457 |
-| **All** | | **1,158** | **516,008** | **2,808,029** | **70,405,136** | **73,730,331** |
+| **All** | | **1,276** | **554,729** | **2,963,390** | **74,554,850** | **78,074,245** |
 
 ### How to get your token counts
 
@@ -333,6 +333,53 @@ conflicting with dispatches that are running at the same time.
 
 **Tokens:** 152 input / 76,205 output / 159,019 cache write / 8,265,475
 cache read / **8,500,851 total**
+
+### 2026-11-27 — Mahsa Mohajeri — Claude Code / Claude Opus 5.5
+**Session ID:** `17496cea-b89c-4b5b-b05a-7d211b27d352`
+**Purpose:** Run a stricter static analysis bug finder on the service
+(issue #39), fix the real bugs it finds, and commit before/after reports.
+
+**Requests (summary):**
+- Review Pranati's PRs #43 and #44 and check which issues are still open.
+- Check the static analysis requirement against the repo, then do it.
+
+**What the AI did:**
+- Ran SpotBugs (maximum effort, all confidence levels) with the
+  FindSecBugs security rules, and PMD's `errorprone`, `multithreading`,
+  `bestpractices`, `security` and `performance` categories, since the
+  default PMD ruleset found nothing.
+- Saved the raw "before" output (PMD: 7, SpotBugs: 18), sorted the
+  findings into real bugs and false positives, and fixed the real ones:
+  exceptions now keep their cause (PMD `PreserveStackTrace`), and three
+  response records keep an unmodifiable copy of their list (SpotBugs
+  `EI_EXPOSE_REP`/`EI_EXPOSE_REP2`).
+- Excluded the reviewed false positives with a stated reason in
+  `pmd-ruleset.xml` and `spotbugs-exclude.xml`, and added SpotBugs to
+  `./mvnw verify` so CI fails on new findings.
+- Added tests for the fixes, saved the "after" reports (both clean),
+  refreshed the committed reports, and documented it all in the
+  README's Static Analysis section. `./mvnw clean verify` passes: 155
+  unit and API tests, 18 integration tests, no Checkstyle, PMD or
+  SpotBugs findings.
+
+**Files generated / modified by AI (as marked in the code):**
+- `pom.xml`: SpotBugs plugin, PMD ruleset (part)
+- `pmd-ruleset.xml` (new)
+- `spotbugs-exclude.xml` (new)
+- `src/main/java/com/resourceallocator/exception/InvalidRequestException.java`: cause constructor (part)
+- `src/main/java/com/resourceallocator/exception/ConflictException.java`: cause constructor (part)
+- `src/main/java/com/resourceallocator/controller/RequestParams.java`: pass the cause (part)
+- `src/main/java/com/resourceallocator/service/ClientService.java`: `duplicateName` with cause (part)
+- `src/main/java/com/resourceallocator/dto/JobResponse.java`, `JobQueueResponse.java`, `ResourceListResponse.java`: defensive copies (part)
+- `src/test/java/com/resourceallocator/controller/RequestParamsTest.java` (new)
+- `src/test/java/com/resourceallocator/dto/ResponseListCopyTest.java` (new)
+- `src/test/java/com/resourceallocator/service/ClientServiceTest.java`: cause check (part)
+- `.github/workflows/ci.yml`: upload the SpotBugs report (part)
+- `README.md`: Static Analysis section, tool and report updates
+- `reports/`: refreshed reports, `reports/static-analysis/` before/after
+
+**Tokens:** 118 input / 38,721 output / 155,361 cache write / 4,149,714
+cache read / **4,343,914 total** (as of this commit)
 
 ### 2026-10-19 — Mahsa Mohajeri — Claude Code / Claude Opus 5.5
 **Session ID:** `c4a5740c-c79d-434b-908c-751f243c929c`

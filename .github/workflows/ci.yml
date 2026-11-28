@@ -1,7 +1,7 @@
 # AI-generated (Claude Code, Claude Opus 5.5)
 # Builds and tests on every push and PR. `verify` runs Checkstyle
-# (validate phase), unit tests + JaCoCo report (test phase), and PMD
-# (verify phase). Reports are uploaded even when the build fails.
+# (validate phase), unit tests + JaCoCo report (test phase), and PMD and
+# SpotBugs (verify phase). Reports are uploaded even when the build fails.
 name: CI
 
 on:
@@ -35,6 +35,7 @@ jobs:
             target/site/jacoco/
             target/checkstyle-result.xml
             target/pmd.xml
+            target/spotbugsXml.xml
             target/surefire-reports/
             target/failsafe-reports/
           if-no-files-found: ignore

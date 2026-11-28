@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!-- BEGIN AI-generated (Claude Code, Claude Opus 5.5) -->
+<!-- Stricter PMD rules for finding bugs. The plugin's default ruleset
+     found nothing, so this file adds the error-prone, multithreading,
+     best-practice, security and performance categories. The pom applies
+     it together with the default ruleset. See the README's "Static
+     Analysis" section for the findings and fixes. -->
+<ruleset name="Resource Allocator bug finding"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>PMD's bug-finding categories.</description>
+
+  <rule ref="category/java/errorprone.xml">
+    <!-- Low-level: flags repeated message text such as "Resource ",
+         not a bug. -->
+    <exclude name="AvoidDuplicateLiterals"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+    <!-- False positives: it flags every HashMap/EnumMap, but ours are
+         local to one method call and never shared between threads. -->
+    <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/bestpractices.xml"/>
+  <rule ref="category/java/security.xml"/>
+  <rule ref="category/java/performance.xml"/>
+</ruleset>
+<!-- END AI-generated -->

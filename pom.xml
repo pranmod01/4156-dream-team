@@ -213,11 +213,46 @@
 				</dependencies>
 				<configuration>
 					<targetJdk>${java.version}</targetJdk>
+					<rulesets>
+						<ruleset>/rulesets/java/maven-pmd-plugin-default.xml</ruleset>
+						<ruleset>pmd-ruleset.xml</ruleset>
+					</rulesets>
 					<printFailingErrors>true</printFailingErrors>
 				</configuration>
 				<executions>
 					<execution>
 						<id>pmd</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- SpotBugs bug finder with the FindSecBugs security
+			     rules, at maximum effort and lowest threshold. Fails
+			     the build on any finding not excluded in
+			     spotbugs-exclude.xml. -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.9.3.0</version>
+				<configuration>
+					<effort>Max</effort>
+					<threshold>Low</threshold>
+					<xmlOutput>true</xmlOutput>
+					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+					<plugins>
+						<plugin>
+							<groupId>com.h3xstream.findsecbugs</groupId>
+							<artifactId>findsecbugs-plugin</artifactId>
+							<version>1.13.0</version>
+						</plugin>
+					</plugins>
+				</configuration>
+				<executions>
+					<execution>
+						<id>spotbugs</id>
 						<phase>verify</phase>
 						<goals>
 							<goal>check</goal>

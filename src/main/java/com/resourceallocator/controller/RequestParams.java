@@ -34,7 +34,7 @@ final class RequestParams {
         } catch (IllegalArgumentException e) {
             throw new InvalidRequestException("Invalid " + parameter + " '"
                     + value + "'; expected one of "
-                    + Arrays.toString(type.getEnumConstants()) + ".");
+                    + Arrays.toString(type.getEnumConstants()) + ".", e);
         }
     }
 }
