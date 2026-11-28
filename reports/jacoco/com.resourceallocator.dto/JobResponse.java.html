@@ -20,7 +20,7 @@ import java.util.List;
  * @param resourceIds identifiers of the resources assigned to the job;
  *        empty while it is queued
  */
-<span class="fc" id="L23">public record JobResponse(</span>
+public record JobResponse(
         Long jobId,
         JobStatus status,
         ResourceType resourceType,
@@ -29,6 +29,26 @@ import java.util.List;
         Instant startedAt,
         Instant leaseEnd,
         List&lt;Long&gt; resourceIds) {
+
+    // AI-generated (Claude Code, Claude Opus 5.5): defensive copy (SpotBugs
+    // EI_EXPOSE_REP / EI_EXPOSE_REP2)
+    /**
+     * Copies {@code resourceIds} into an unmodifiable list, so the response
+     * cannot be changed through the list it was built from or the list
+     * it returns.
+     *
+     * @param jobId the job identifier
+     * @param status whether the job is queued, running, or done
+     * @param resourceType whether the job needs CPUs or GPUs
+     * @param unitsRequested number of resources the job needs
+     * @param submittedAt when the job was submitted
+     * @param startedAt when the job started running, or {@code null}
+     * @param leaseEnd when the job's lease ends, or {@code null}
+     * @param resourceIds identifiers of the resources assigned to the job
+     */
+<span class="fc" id="L49">    public JobResponse {</span>
+<span class="fc" id="L50">        resourceIds = List.copyOf(resourceIds);</span>
+<span class="fc" id="L51">    }</span>
 
     /**
      * Builds the response view of a job entity.
@@ -39,14 +59,14 @@ import java.util.List;
      */
     public static JobResponse from(final Job job,
             final List&lt;Long&gt; resourceIds) {
-<span class="fc" id="L42">        return new JobResponse(</span>
-<span class="fc" id="L43">                job.getId(),</span>
-<span class="fc" id="L44">                job.getStatus(),</span>
-<span class="fc" id="L45">                job.getResourceType(),</span>
-<span class="fc" id="L46">                job.getUnitsRequested(),</span>
-<span class="fc" id="L47">                job.getSubmittedAt(),</span>
-<span class="fc" id="L48">                job.getStartedAt(),</span>
-<span class="fc" id="L49">                job.getLeaseEnd(),</span>
+<span class="fc" id="L62">        return new JobResponse(</span>
+<span class="fc" id="L63">                job.getId(),</span>
+<span class="fc" id="L64">                job.getStatus(),</span>
+<span class="fc" id="L65">                job.getResourceType(),</span>
+<span class="fc" id="L66">                job.getUnitsRequested(),</span>
+<span class="fc" id="L67">                job.getSubmittedAt(),</span>
+<span class="fc" id="L68">                job.getStartedAt(),</span>
+<span class="fc" id="L69">                job.getLeaseEnd(),</span>
                 resourceIds);
     }
 }

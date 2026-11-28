@@ -110,13 +110,28 @@ public class Organization {
 <span class="fc" id="L110">        return maxGpus;</span>
     }
 
+    // BEGIN AI-generated (Claude Code, Claude Opus 5.5)
+    /**
+     * Replaces the organization's usage limits. Running jobs are not
+     * affected; the new limits apply to the next jobs the dispatcher
+     * starts.
+     *
+     * @param newMaxCpus maximum CPU units the organization may use at once
+     * @param newMaxGpus maximum GPU units the organization may use at once
+     */
+    public void setLimits(final int newMaxCpus, final int newMaxGpus) {
+<span class="fc" id="L123">        this.maxCpus = newMaxCpus;</span>
+<span class="fc" id="L124">        this.maxGpus = newMaxGpus;</span>
+<span class="fc" id="L125">    }</span>
+    // END AI-generated
+
     /**
      * Returns when the organization was registered.
      *
      * @return the registration time
      */
     public Instant getCreatedAt() {
-<span class="fc" id="L119">        return createdAt;</span>
+<span class="fc" id="L134">        return createdAt;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

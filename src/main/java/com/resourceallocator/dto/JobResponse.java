@@ -30,6 +30,26 @@ public record JobResponse(
         Instant leaseEnd,
         List<Long> resourceIds) {
 
+    // AI-generated (Claude Code, Claude Opus 5.5): defensive copy (SpotBugs
+    // EI_EXPOSE_REP / EI_EXPOSE_REP2)
+    /**
+     * Copies {@code resourceIds} into an unmodifiable list, so the response
+     * cannot be changed through the list it was built from or the list
+     * it returns.
+     *
+     * @param jobId the job identifier
+     * @param status whether the job is queued, running, or done
+     * @param resourceType whether the job needs CPUs or GPUs
+     * @param unitsRequested number of resources the job needs
+     * @param submittedAt when the job was submitted
+     * @param startedAt when the job started running, or {@code null}
+     * @param leaseEnd when the job's lease ends, or {@code null}
+     * @param resourceIds identifiers of the resources assigned to the job
+     */
+    public JobResponse {
+        resourceIds = List.copyOf(resourceIds);
+    }
+
     /**
      * Builds the response view of a job entity.
      *

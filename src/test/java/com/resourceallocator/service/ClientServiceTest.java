@@ -121,7 +121,10 @@ class ClientServiceTest {
         CreateClientRequest request = new CreateClientRequest("acme", 1, 1);
 
         assertThatThrownBy(() -> clientService.createClient(request))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(ConflictException.class)
+                // AI-edited (Claude Code, Claude Opus 5.5): the database
+                // error is kept as the cause (PMD PreserveStackTrace fix)
+                .hasCauseInstanceOf(DataIntegrityViolationException.class);
     }
 
     // BEGIN AI-generated (Claude Code, Claude Opus 5.5)

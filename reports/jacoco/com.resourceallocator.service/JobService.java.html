@@ -12,6 +12,7 @@ import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
 import com.resourceallocator.model.ResourceType;
 import com.resourceallocator.repository.JobRepository;
+import com.resourceallocator.repository.OrganizationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,17 +30,23 @@ public class JobService {
     /** Starts queued jobs and finishes expired ones. */
     private final JobDispatcher jobDispatcher;
 
+    /** Locks the organization while a job is submitted. */
+    private final OrganizationRepository organizationRepository;
+
     /**
      * Creates the service.
      *
      * @param jobRepository repository used to persist jobs
      * @param jobDispatcher dispatcher that updates job states
+     * @param organizationRepository repository used to lock organizations
      */
     public JobService(final JobRepository jobRepository,
-<span class="fc" id="L39">            final JobDispatcher jobDispatcher) {</span>
-<span class="fc" id="L40">        this.jobRepository = jobRepository;</span>
-<span class="fc" id="L41">        this.jobDispatcher = jobDispatcher;</span>
-<span class="fc" id="L42">    }</span>
+            final JobDispatcher jobDispatcher,
+<span class="fc" id="L45">            final OrganizationRepository organizationRepository) {</span>
+<span class="fc" id="L46">        this.jobRepository = jobRepository;</span>
+<span class="fc" id="L47">        this.jobDispatcher = jobDispatcher;</span>
+<span class="fc" id="L48">        this.organizationRepository = organizationRepository;</span>
+<span class="fc" id="L49">    }</span>
 
     /**
      * Queues a new job for the organization and starts it at once if its
@@ -59,22 +66,31 @@ public class JobService {
     @Transactional
     public JobResponse addJob(final Organization organization,
             final AddJobRequest request) {
-<span class="fc" id="L62">        validateCores(request.resourceType(), request.minCores());</span>
-<span class="fc" id="L63">        int limit = usageLimit(organization, request.resourceType());</span>
-<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (request.unitsRequested() &gt; limit) {</span>
-<span class="fc" id="L65">            throw new InvalidRequestException(&quot;unitsRequested exceeds the &quot;</span>
-<span class="fc" id="L66">                    + &quot;organization's &quot; + request.resourceType()</span>
+<span class="fc" id="L69">        validateCores(request.resourceType(), request.minCores());</span>
+        // AI-edited (Claude Code, Claude Opus 5.5): lock before checking
+        // Lock the organization before inserting the job, and check the
+        // limit on the locked row rather than the copy loaded during
+        // authentication. A concurrent limit change then cannot slip a job
+        // past a lowered limit.
+<span class="fc" id="L75">        Organization locked = organizationRepository</span>
+<span class="fc" id="L76">                .findByIdForUpdate(organization.getId())</span>
+<span class="pc" id="L77">                .orElseThrow(() -&gt; new NotFoundException(&quot;Organization &quot;</span>
+<span class="nc" id="L78">                        + organization.getId() + &quot; was not found.&quot;));</span>
+<span class="fc" id="L79">        int limit = usageLimit(locked, request.resourceType());</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        if (request.unitsRequested() &gt; limit) {</span>
+<span class="fc" id="L81">            throw new InvalidRequestException(&quot;unitsRequested exceeds the &quot;</span>
+<span class="fc" id="L82">                    + &quot;organization's &quot; + request.resourceType()</span>
                     + &quot; limit of &quot; + limit + &quot;.&quot;);
         }
-<span class="fc" id="L69">        Job job = jobRepository.saveAndFlush(new Job(</span>
-<span class="fc" id="L70">                organization.getId(),</span>
-<span class="fc" id="L71">                request.resourceType(),</span>
-<span class="fc" id="L72">                request.unitsRequested(),</span>
-<span class="fc" id="L73">                request.minMemoryGb(),</span>
-<span class="fc" id="L74">                request.minCores(),</span>
-<span class="fc" id="L75">                request.maxDurationHours()));</span>
-<span class="fc" id="L76">        jobDispatcher.dispatch(organization.getId());</span>
-<span class="fc" id="L77">        return toResponse(job);</span>
+<span class="fc" id="L85">        Job job = jobRepository.saveAndFlush(new Job(</span>
+<span class="fc" id="L86">                organization.getId(),</span>
+<span class="fc" id="L87">                request.resourceType(),</span>
+<span class="fc" id="L88">                request.unitsRequested(),</span>
+<span class="fc" id="L89">                request.minMemoryGb(),</span>
+<span class="fc" id="L90">                request.minCores(),</span>
+<span class="fc" id="L91">                request.maxDurationHours()));</span>
+<span class="fc" id="L92">        jobDispatcher.dispatch(organization.getId());</span>
+<span class="fc" id="L93">        return toResponse(job);</span>
     }
 
     /**
@@ -89,12 +105,12 @@ public class JobService {
     @Transactional
     public JobResponse getJobStatus(final Organization organization,
             final Long jobId) {
-<span class="fc" id="L92">        jobDispatcher.dispatch(organization.getId());</span>
-<span class="fc" id="L93">        Job job = jobRepository</span>
-<span class="fc" id="L94">                .findByIdAndOrganizationId(jobId, organization.getId())</span>
-<span class="fc" id="L95">                .orElseThrow(() -&gt; new NotFoundException(</span>
+<span class="fc" id="L108">        jobDispatcher.dispatch(organization.getId());</span>
+<span class="fc" id="L109">        Job job = jobRepository</span>
+<span class="fc" id="L110">                .findByIdAndOrganizationId(jobId, organization.getId())</span>
+<span class="fc" id="L111">                .orElseThrow(() -&gt; new NotFoundException(</span>
                         &quot;Job &quot; + jobId + &quot; was not found.&quot;));
-<span class="fc" id="L97">        return toResponse(job);</span>
+<span class="fc" id="L113">        return toResponse(job);</span>
     }
 
     /**
@@ -114,40 +130,40 @@ public class JobService {
     @Transactional
     public DeleteJobResponse deleteJob(final Organization organization,
             final Long jobId) {
-<span class="fc" id="L117">        jobDispatcher.dispatch(organization.getId());</span>
-<span class="fc" id="L118">        Job job = jobRepository</span>
-<span class="fc" id="L119">                .findByIdAndOrganizationId(jobId, organization.getId())</span>
-<span class="fc" id="L120">                .orElseThrow(() -&gt; new NotFoundException(</span>
+<span class="fc" id="L133">        jobDispatcher.dispatch(organization.getId());</span>
+<span class="fc" id="L134">        Job job = jobRepository</span>
+<span class="fc" id="L135">                .findByIdAndOrganizationId(jobId, organization.getId())</span>
+<span class="fc" id="L136">                .orElseThrow(() -&gt; new NotFoundException(</span>
                         &quot;Job &quot; + jobId + &quot; was not found.&quot;));
-<span class="fc bfc" id="L122" title="All 2 branches covered.">        if (job.getStatus() == JobStatus.RUNNING) {</span>
-<span class="fc" id="L123">            throw new ConflictException(</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (job.getStatus() == JobStatus.RUNNING) {</span>
+<span class="fc" id="L139">            throw new ConflictException(</span>
                     &quot;Job &quot; + jobId + &quot; is running and cannot be deleted.&quot;);
         }
-<span class="fc" id="L126">        jobRepository.delete(job);</span>
-<span class="fc" id="L127">        return new DeleteJobResponse(jobId);</span>
+<span class="fc" id="L142">        jobRepository.delete(job);</span>
+<span class="fc" id="L143">        return new DeleteJobResponse(jobId);</span>
     }
 
     private JobResponse toResponse(final Job job) {
-<span class="fc" id="L131">        return JobResponse.from(job,</span>
-<span class="fc" id="L132">                jobRepository.findResourceIdsByJobId(job.getId()));</span>
+<span class="fc" id="L147">        return JobResponse.from(job,</span>
+<span class="fc" id="L148">                jobRepository.findResourceIdsByJobId(job.getId()));</span>
     }
 
     private static void validateCores(final ResourceType type,
             final Integer minCores) {
-<span class="fc bfc" id="L137" title="All 4 branches covered.">        if (type == ResourceType.CPU &amp;&amp; minCores == null) {</span>
-<span class="fc" id="L138">            throw new InvalidRequestException(</span>
+<span class="fc bfc" id="L153" title="All 4 branches covered.">        if (type == ResourceType.CPU &amp;&amp; minCores == null) {</span>
+<span class="fc" id="L154">            throw new InvalidRequestException(</span>
                     &quot;minCores is required for CPU jobs.&quot;);
         }
-<span class="fc bfc" id="L141" title="All 4 branches covered.">        if (type == ResourceType.GPU &amp;&amp; minCores != null) {</span>
-<span class="fc" id="L142">            throw new InvalidRequestException(</span>
+<span class="fc bfc" id="L157" title="All 4 branches covered.">        if (type == ResourceType.GPU &amp;&amp; minCores != null) {</span>
+<span class="fc" id="L158">            throw new InvalidRequestException(</span>
                     &quot;minCores must not be set for GPU jobs.&quot;);
         }
-<span class="fc" id="L145">    }</span>
+<span class="fc" id="L161">    }</span>
 
     private static int usageLimit(final Organization organization,
             final ResourceType type) {
-<span class="fc bfc" id="L149" title="All 2 branches covered.">        return type == ResourceType.GPU</span>
-<span class="fc" id="L150">                ? organization.getMaxGpus() : organization.getMaxCpus();</span>
+<span class="fc bfc" id="L165" title="All 2 branches covered.">        return type == ResourceType.GPU</span>
+<span class="fc" id="L166">                ? organization.getMaxGpus() : organization.getMaxCpus();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

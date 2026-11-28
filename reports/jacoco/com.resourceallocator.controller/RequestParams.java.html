@@ -34,7 +34,7 @@ final class RequestParams {
 <span class="fc" id="L34">        } catch (IllegalArgumentException e) {</span>
 <span class="fc" id="L35">            throw new InvalidRequestException(&quot;Invalid &quot; + parameter + &quot; '&quot;</span>
                     + value + &quot;'; expected one of &quot;
-<span class="fc" id="L37">                    + Arrays.toString(type.getEnumConstants()) + &quot;.&quot;);</span>
+<span class="fc" id="L37">                    + Arrays.toString(type.getEnumConstants()) + &quot;.&quot;, e);</span>
         }
     }
 }

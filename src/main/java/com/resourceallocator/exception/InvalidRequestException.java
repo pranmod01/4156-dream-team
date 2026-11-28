@@ -16,4 +16,17 @@ public class InvalidRequestException extends RuntimeException {
     public InvalidRequestException(final String message) {
         super(message);
     }
+
+    // AI-generated (Claude Code, Claude Opus 5.5): keeps the cause (PMD
+    // PreserveStackTrace)
+    /**
+     * Creates the exception, keeping the exception that caused it.
+     *
+     * @param message explanation returned to the client
+     * @param cause the underlying exception, kept for logs and debugging
+     */
+    public InvalidRequestException(final String message,
+            final Throwable cause) {
+        super(message, cause);
+    }
 }

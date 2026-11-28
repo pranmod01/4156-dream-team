@@ -3,9 +3,16 @@
 
 import com.resourceallocator.auth.ApiKeyHasher;
 import com.resourceallocator.dto.CreateClientRequest;
+import com.resourceallocator.dto.ClientResponse;
 import com.resourceallocator.dto.CreateClientResponse;
+import com.resourceallocator.dto.UpdateClientLimitsRequest;
 import com.resourceallocator.exception.ConflictException;
+import com.resourceallocator.exception.InvalidRequestException;
+import com.resourceallocator.exception.NotFoundException;
+import com.resourceallocator.model.JobStatus;
 import com.resourceallocator.model.Organization;
+import com.resourceallocator.model.ResourceType;
+import com.resourceallocator.repository.JobRepository;
 import com.resourceallocator.repository.OrganizationRepository;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -14,7 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Registers client organizations and issues their API keys.
+ * Registers client organizations, issues their API keys, and changes
+ * their usage limits.
  */
 @Service
 public class ClientService {
@@ -23,20 +31,32 @@ public class ClientService {
     private static final int API_KEY_BYTES = 32;
 
     /** Source of randomness for API keys. */
-<span class="fc" id="L26">    private static final SecureRandom RANDOM = new SecureRandom();</span>
+<span class="fc" id="L34">    private static final SecureRandom RANDOM = new SecureRandom();</span>
 
     /** Persists organizations. */
     private final OrganizationRepository organizationRepository;
+
+    /** Checks the organization's queued jobs against new limits. */
+    private final JobRepository jobRepository;
+
+    /** Starts queued jobs that a raised limit lets run. */
+    private final JobDispatcher jobDispatcher;
 
     /**
      * Creates the service.
      *
      * @param organizationRepository repository used to persist organizations
+     * @param jobRepository repository used to read queued jobs
+     * @param jobDispatcher dispatcher run after limits change
      */
     public ClientService(
-<span class="fc" id="L37">            final OrganizationRepository organizationRepository) {</span>
-<span class="fc" id="L38">        this.organizationRepository = organizationRepository;</span>
-<span class="fc" id="L39">    }</span>
+            final OrganizationRepository organizationRepository,
+            final JobRepository jobRepository,
+<span class="fc" id="L55">            final JobDispatcher jobDispatcher) {</span>
+<span class="fc" id="L56">        this.organizationRepository = organizationRepository;</span>
+<span class="fc" id="L57">        this.jobRepository = jobRepository;</span>
+<span class="fc" id="L58">        this.jobDispatcher = jobDispatcher;</span>
+<span class="fc" id="L59">    }</span>
 
     /**
      * Registers a new organization and issues it an API key. Only the
@@ -51,35 +71,104 @@ public class ClientService {
             final CreateClientRequest request) {
         // The 255-character limit was already checked on the untrimmed
         // name (see CreateClientRequest).
-<span class="fc" id="L54">        String orgName = request.orgName().trim();</span>
-<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (organizationRepository.existsByOrgName(orgName)) {</span>
-<span class="fc" id="L56">            throw duplicateName(orgName);</span>
+<span class="fc" id="L74">        String orgName = request.orgName().trim();</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (organizationRepository.existsByOrgName(orgName)) {</span>
+<span class="fc" id="L76">            throw duplicateName(orgName);</span>
         }
-<span class="fc" id="L58">        String apiKey = generateApiKey();</span>
-<span class="fc" id="L59">        Organization organization = new Organization(</span>
+<span class="fc" id="L78">        String apiKey = generateApiKey();</span>
+<span class="fc" id="L79">        Organization organization = new Organization(</span>
                 orgName,
-<span class="fc" id="L61">                ApiKeyHasher.hash(apiKey),</span>
-<span class="fc" id="L62">                request.maxCpus(),</span>
-<span class="fc" id="L63">                request.maxGpus());</span>
+<span class="fc" id="L81">                ApiKeyHasher.hash(apiKey),</span>
+<span class="fc" id="L82">                request.maxCpus(),</span>
+<span class="fc" id="L83">                request.maxGpus());</span>
         try {
             // Flush now so a concurrent registration of the same name
             // fails here, as a 409, rather than at commit time.
-<span class="fc" id="L67">            organization = organizationRepository.saveAndFlush(organization);</span>
-<span class="fc" id="L68">        } catch (DataIntegrityViolationException e) {</span>
-<span class="fc" id="L69">            throw duplicateName(orgName);</span>
-<span class="fc" id="L70">        }</span>
-<span class="fc" id="L71">        return CreateClientResponse.from(organization, apiKey);</span>
+<span class="fc" id="L87">            organization = organizationRepository.saveAndFlush(organization);</span>
+<span class="fc" id="L88">        } catch (DataIntegrityViolationException e) {</span>
+<span class="fc" id="L89">            throw duplicateName(orgName, e);</span>
+<span class="fc" id="L90">        }</span>
+<span class="fc" id="L91">        return CreateClientResponse.from(organization, apiKey);</span>
     }
 
+    /**
+     * Changes the organization's usage limits.
+     *
+     * &lt;p&gt;The organization's row is locked first, the same lock every
+     * dispatch takes, so the change never lands in the middle of a
+     * dispatch: a dispatch either finishes under the old limits before
+     * this runs, or waits and then sees the new ones. Job submission takes
+     * the lock too, so no job larger than the new limit can be queued
+     * while this runs.
+     *
+     * &lt;p&gt;Running jobs are never stopped. If a limit is lowered below the
+     * units running jobs already hold, those jobs keep running until their
+     * leases end, and no new job of that type starts until usage falls
+     * below the new limit. A limit cannot be lowered below the units a
+     * queued job requests, since that job could then never run; such
+     * jobs must be deleted first. After the change the dispatcher runs,
+     * so jobs that a raised limit allows start at once.
+     *
+     * @param organization the authenticated organization
+     * @param request the new limits; a {@code null} field keeps its value
+     * @return the organization with its updated limits
+     * @throws InvalidRequestException if neither limit is given
+     * @throws ConflictException if a queued job requests more units than
+     *         the new limit allows
+     */
+    @Transactional
+    public ClientResponse updateLimits(final Organization organization,
+            final UpdateClientLimitsRequest request) {
+<span class="fc bfc" id="L122" title="All 4 branches covered.">        if (request.maxCpus() == null &amp;&amp; request.maxGpus() == null) {</span>
+<span class="fc" id="L123">            throw new InvalidRequestException(</span>
+                    &quot;At least one of maxCpus or maxGpus is required.&quot;);
+        }
+        // Read the limits from the locked row, not from the copy loaded
+        // during authentication, which may be out of date.
+<span class="fc" id="L128">        Organization locked = organizationRepository</span>
+<span class="fc" id="L129">                .findByIdForUpdate(organization.getId())</span>
+<span class="pc" id="L130">                .orElseThrow(() -&gt; new NotFoundException(&quot;Organization &quot;</span>
+<span class="nc" id="L131">                        + organization.getId() + &quot; was not found.&quot;));</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        int maxCpus = request.maxCpus() == null</span>
+<span class="fc" id="L133">                ? locked.getMaxCpus() : request.maxCpus();</span>
+<span class="fc bfc" id="L134" title="All 2 branches covered.">        int maxGpus = request.maxGpus() == null</span>
+<span class="fc" id="L135">                ? locked.getMaxGpus() : request.maxGpus();</span>
+<span class="fc" id="L136">        checkQueuedJobsFit(locked.getId(), ResourceType.CPU, maxCpus);</span>
+<span class="fc" id="L137">        checkQueuedJobsFit(locked.getId(), ResourceType.GPU, maxGpus);</span>
+<span class="fc" id="L138">        locked.setLimits(maxCpus, maxGpus);</span>
+<span class="fc" id="L139">        organizationRepository.flush();</span>
+        // Same transaction, so the dispatcher reuses the lock and sees the
+        // new limits.
+<span class="fc" id="L142">        jobDispatcher.dispatch(locked.getId());</span>
+<span class="fc" id="L143">        return ClientResponse.from(locked);</span>
+    }
+
+    private void checkQueuedJobsFit(final Long organizationId,
+            final ResourceType type, final int limit) {
+<span class="fc bfc" id="L148" title="All 2 branches covered.">        if (jobRepository.existsWithMoreUnitsThan(</span>
+                organizationId, JobStatus.QUEUED, type, limit)) {
+<span class="fc" id="L150">            throw new ConflictException(&quot;A queued &quot; + type + &quot; job requests &quot;</span>
+                    + &quot;more than &quot; + limit + &quot; units; delete it before &quot;
+                    + &quot;lowering the &quot; + type + &quot; limit to &quot; + limit + &quot;.&quot;);
+        }
+<span class="fc" id="L154">    }</span>
+
     private static ConflictException duplicateName(final String orgName) {
-<span class="fc" id="L75">        return new ConflictException(</span>
-                &quot;Organization '&quot; + orgName + &quot;' already exists.&quot;);
+<span class="fc" id="L157">        return duplicateName(orgName, null);</span>
+    }
+
+    // AI-edited (Claude Code, Claude Opus 5.5): keeps the database error
+    // as the cause (PMD PreserveStackTrace)
+    private static ConflictException duplicateName(final String orgName,
+            final Throwable cause) {
+<span class="fc" id="L164">        return new ConflictException(</span>
+                &quot;Organization '&quot; + orgName + &quot;' already exists.&quot;, cause);
     }
 
     private static String generateApiKey() {
-<span class="fc" id="L80">        byte[] bytes = new byte[API_KEY_BYTES];</span>
-<span class="fc" id="L81">        RANDOM.nextBytes(bytes);</span>
-<span class="fc" id="L82">        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);</span>
+<span class="fc" id="L169">        byte[] bytes = new byte[API_KEY_BYTES];</span>
+<span class="fc" id="L170">        RANDOM.nextBytes(bytes);</span>
+<span class="fc" id="L171">        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -86,7 +86,7 @@ public class ClientService {
             // fails here, as a 409, rather than at commit time.
             organization = organizationRepository.saveAndFlush(organization);
         } catch (DataIntegrityViolationException e) {
-            throw duplicateName(orgName);
+            throw duplicateName(orgName, e);
         }
         return CreateClientResponse.from(organization, apiKey);
     }
@@ -154,8 +154,15 @@ public class ClientService {
     }
 
     private static ConflictException duplicateName(final String orgName) {
+        return duplicateName(orgName, null);
+    }
+
+    // AI-edited (Claude Code, Claude Opus 5.5): keeps the database error
+    // as the cause (PMD PreserveStackTrace)
+    private static ConflictException duplicateName(final String orgName,
+            final Throwable cause) {
         return new ConflictException(
-                "Organization '" + orgName + "' already exists.");
+                "Organization '" + orgName + "' already exists.", cause);
     }
 
     private static String generateApiKey() {

@@ -5,7 +5,8 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Requires an API key on every job and resource endpoint.
+ * Requires an API key on every job and resource endpoint, and on
+ * {@code /clients/me}. Registration ({@code POST /clients}) stays open.
  */
 @Configuration
 public class ApiKeyAuthConfig implements WebMvcConfigurer {
@@ -18,20 +19,22 @@ public class ApiKeyAuthConfig implements WebMvcConfigurer {
      *
      * @param apiKeyAuthInterceptor interceptor that checks API keys
      */
-<span class="fc" id="L21">    public ApiKeyAuthConfig(final ApiKeyAuthInterceptor apiKeyAuthInterceptor) {</span>
-<span class="fc" id="L22">        this.apiKeyAuthInterceptor = apiKeyAuthInterceptor;</span>
-<span class="fc" id="L23">    }</span>
+<span class="fc" id="L22">    public ApiKeyAuthConfig(final ApiKeyAuthInterceptor apiKeyAuthInterceptor) {</span>
+<span class="fc" id="L23">        this.apiKeyAuthInterceptor = apiKeyAuthInterceptor;</span>
+<span class="fc" id="L24">    }</span>
 
     /**
-     * Registers the API key check for job and resource endpoints.
+     * Registers the API key check for the protected endpoints.
      *
      * @param registry the interceptor registry
      */
     @Override
     public void addInterceptors(final InterceptorRegistry registry) {
-<span class="fc" id="L32">        registry.addInterceptor(apiKeyAuthInterceptor)</span>
-<span class="fc" id="L33">                .addPathPatterns(&quot;/jobs&quot;, &quot;/jobs/**&quot;,</span>
-                        &quot;/resources&quot;, &quot;/resources/**&quot;);
-<span class="fc" id="L35">    }</span>
+<span class="fc" id="L33">        registry.addInterceptor(apiKeyAuthInterceptor)</span>
+<span class="fc" id="L34">                .addPathPatterns(&quot;/jobs&quot;, &quot;/jobs/**&quot;,</span>
+                        &quot;/resources&quot;, &quot;/resources/**&quot;,
+                        // AI-edited (Claude Code, Claude Opus 5.5)
+                        &quot;/clients/me&quot;);
+<span class="fc" id="L38">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

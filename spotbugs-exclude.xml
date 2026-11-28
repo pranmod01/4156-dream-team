@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- BEGIN AI-generated (Claude Code, Claude Opus 5.5) -->
+<!-- SpotBugs findings reviewed and judged false positives. -->
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/3.1.0/spotbugs/etc/findbugsfilter.xsd">
+  <!-- Controllers keep the Spring-managed service passed to their
+       constructor. Sharing that singleton is how dependency injection
+       works, not an exposed internal object. -->
+  <Match>
+    <Package name="com.resourceallocator.controller"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <!-- FindSecBugs marks every HTTP endpoint as SPRING_ENDPOINT so that a
+       security review knows where requests enter. It is a list of entry
+       points, not a bug. Every endpoint except POST /clients requires an
+       API key (see ApiKeyAuthConfig). -->
+  <Match>
+    <Bug pattern="SPRING_ENDPOINT"/>
+  </Match>
+</FindBugsFilter>
+<!-- END AI-generated -->

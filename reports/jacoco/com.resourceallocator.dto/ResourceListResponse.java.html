@@ -10,8 +10,23 @@ import java.util.List;
  * @param summary usage against limits across all of the organization's
  *                resources, independent of the filters
  */
-<span class="fc" id="L13">public record ResourceListResponse(</span>
+public record ResourceListResponse(
         List&lt;ResourceStatusEntry&gt; resources,
         ResourceSummary summary) {
+
+    // AI-generated (Claude Code, Claude Opus 5.5): defensive copy (SpotBugs
+    // EI_EXPOSE_REP / EI_EXPOSE_REP2)
+    /**
+     * Copies {@code resources} into an unmodifiable list, so the response
+     * cannot be changed through the list it was built from or the list
+     * it returns.
+     *
+     * @param resources matching resources, ordered by identifier
+     * @param summary usage against limits across all of the organization's
+     *                resources
+     */
+<span class="fc" id="L28">    public ResourceListResponse {</span>
+<span class="fc" id="L29">        resources = List.copyOf(resources);</span>
+<span class="fc" id="L30">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
